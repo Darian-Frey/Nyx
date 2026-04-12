@@ -1,0 +1,7 @@
+[package]
+name = "nyx-prelude"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+nyx-core = { path = "../nyx-core" }
