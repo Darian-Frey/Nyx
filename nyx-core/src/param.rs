@@ -2,7 +2,7 @@ use crate::signal::{AudioContext, Signal};
 
 /// A parameter that is either a fixed value or modulated by a `Signal`.
 ///
-/// Every processor parameter (frequency, cutoff, gain, …) accepts `Param<S>`
+/// Every processor parameter (frequency, cutoff, gain, ...) accepts `Param<S>`
 /// so that `osc.lowpass(800.0)` and `osc.lowpass(lfo)` both compile.
 pub enum Param<S: Signal> {
     Static(f32),
@@ -25,6 +25,33 @@ impl<S: Signal> Param<S> {
 impl From<f32> for Param<ConstSignal> {
     fn from(value: f32) -> Self {
         Param::Static(value)
+    }
+}
+
+/// Conversion trait for values that can become a `Param`.
+///
+/// This lets combinator methods accept both `f32` and `Signal` types
+/// without ambiguity:
+/// ```ignore
+/// signal.amp(0.5)           // f32 → Param::Static
+/// signal.amp(lfo)           // Signal → Param::Modulated
+/// ```
+pub trait IntoParam {
+    type Signal: Signal;
+    fn into_param(self) -> Param<Self::Signal>;
+}
+
+impl IntoParam for f32 {
+    type Signal = ConstSignal;
+    fn into_param(self) -> Param<ConstSignal> {
+        Param::Static(self)
+    }
+}
+
+impl<S: Signal> IntoParam for S {
+    type Signal = S;
+    fn into_param(self) -> Param<S> {
+        Param::Modulated(self)
     }
 }
 
