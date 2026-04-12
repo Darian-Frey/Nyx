@@ -3,5 +3,9 @@ name = "nyx-prelude"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["audio"]
+audio = ["nyx-core/audio"]
+
 [dependencies]
-nyx-core = { path = "../nyx-core" }
+nyx-core = { path = "../nyx-core", default-features = false }
