@@ -10,3 +10,4 @@ audio = ["dep:cpal"]
 [dependencies]
 cpal = { version = "0.17", optional = true }
 rtrb = "0.3"
+spectrum-analyzer = "1.6"

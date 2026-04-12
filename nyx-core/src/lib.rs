@@ -10,6 +10,9 @@ mod render;
 pub mod osc;
 pub mod filter;
 pub mod dynamics;
+pub mod scope;
+pub mod inspect;
+pub mod spectrum;
 
 pub use signal::{
     AudioContext, Signal, SignalExt,
@@ -24,3 +27,8 @@ pub use bridge::{bridge, AudioCommand, BridgeReceiver, BridgeSender};
 pub use render::render_to_buffer;
 pub use filter::{Biquad, FilterExt, FilterMode};
 pub use dynamics::{gain, peak_limiter, Gain, PeakLimiter};
+pub use scope::{Scope, ScopeExt, ScopeHandle};
+pub use inspect::{Inspect, InspectExt};
+pub use spectrum::{
+    FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn,
+};
