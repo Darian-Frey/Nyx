@@ -1,14 +1,7 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub mod clock;
+pub mod envelope;
+pub mod automation;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use clock::{clock, Clock, ClockState};
+pub use envelope::{adsr, Adsr, Stage};
+pub use automation::{automation, Automation, AutomationExt, Follow};
