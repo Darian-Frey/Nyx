@@ -116,16 +116,16 @@ the `Signal` trait.
 
 ## Key Dependencies
 
-| Crate | Purpose |
-|---|---|
-| `cpal (0.17+)` | Cross-platform audio I/O (WASAPI / CoreAudio / ALSA / PipeWire) |
-| `rtrb` or `ringbuf` | Lock-free SPSC ring buffer for UI→audio thread comms |
-| `midir` | Low-latency cross-platform MIDI input |
-| `rosc` | OSC support |
-| `spectrum-analyzer` | FFT magnitude bins for the visual mirror |
-| `serde` + `serde_json` / `toml` | Patch serialisation |
-| `iced (0.13+)` | GUI framework (nyx-iced only) |
-| `iced_audio (0.12+)` | Knobs, sliders, XYPad (nyx-iced only) |
+| Crate | Purpose | Status |
+|---|---|---|
+| `cpal (0.17)` | Cross-platform audio I/O (WASAPI / CoreAudio / ALSA / PipeWire) | In use (optional `audio` feature) |
+| `rtrb (0.3)` | Lock-free SPSC ring buffer for UI→audio thread comms | In use |
+| `spectrum-analyzer (1.6+)` | FFT magnitude bins for the visual mirror | In use |
+| `midir` | Low-latency cross-platform MIDI input | Phase 9 |
+| `rosc` | OSC support | Phase 9 |
+| `serde` + `serde_json` / `toml` | Patch serialisation | Phase 8 |
+| `iced (0.13+)` | GUI framework (nyx-iced only) | Phase 10 |
+| `iced_audio (0.12+)` | Knobs, sliders, XYPad (nyx-iced only) | Phase 10 |
 
 Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 
@@ -134,64 +134,64 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **not started — workspace scaffold first.**
+has passing tests. Current status: **Phase 7 is next. Phases 0–6 complete (143 tests passing).**
 
-### Phase 0 — Architecture Spike (Highest Priority)
-- [ ] Create Cargo workspace with all five crate stubs
-- [ ] Define `Signal` trait and `AudioContext` in `nyx-core`
-- [ ] Define `Param<S>` enum in `nyx-core`
-- [ ] Define `VoicePool<S, N>` skeleton in `nyx-core`
-- [ ] Write unit tests proving the trait compiles and `next()` is callable
+### Phase 0 — Architecture Spike (Complete)
+- [x] Create Cargo workspace with all five crate stubs
+- [x] Define `Signal` trait and `AudioContext` in `nyx-core`
+- [x] Define `Param<S>` enum in `nyx-core`
+- [x] Define `VoicePool<S, N>` skeleton in `nyx-core`
+- [x] Write unit tests proving the trait compiles and `next()` is callable
 
-### Phase 1 — The "Night-Safe" Core
-- [ ] Integrate `cpal` — device init, stream creation, audio callback
-- [ ] Implement SPSC bridge (`rtrb`) between main thread and audio thread
-- [ ] Set up custom allocator CI guard (panics on alloc in audio callback)
-- [ ] Implement offline render mode: `render_to_buffer(signal, secs, sr)`
-- [ ] Device hot-plug handling and reconnection loop
-- [ ] Golden-file DSP regression test framework
-- [ ] Default buffer size targeting < 20ms latency
+### Phase 1 — The "Night-Safe" Core (Complete)
+- [x] Integrate `cpal` — device init, stream creation, audio callback
+- [x] Implement SPSC bridge (`rtrb`) between main thread and audio thread
+- [x] Set up custom allocator CI guard (panics on alloc in audio callback)
+- [x] Implement offline render mode: `render_to_buffer(signal, secs, sr)`
+- [x] Device hot-plug handling and reconnection loop
+- [x] Golden-file DSP regression test framework
+- [x] Default buffer size targeting < 20ms latency
 
-### Phase 2 — The Fluent API
-- [ ] Implement `Signal` trait with `.boxed()` escape hatch
-- [ ] Implement `Param<S>` with `From<f32>` and `From<S: Signal>` impls
-- [ ] Combinator wrappers: `.amp()`, `.mix()`, `.pan()`, `.clip()`, `.add()`, `.mul()`
-- [ ] `nyx::play(signal)` macro — wraps all cpal boilerplate
-- [ ] `nyx-prelude` re-exports
+### Phase 2 — The Fluent API (Complete)
+- [x] Implement `Signal` trait with `.boxed()` escape hatch
+- [x] Implement `Param<S>` with `IntoParam` trait (`From<f32>` and `From<S: Signal>`)
+- [x] Combinator wrappers: `.amp()`, `.mix()`, `.pan()`, `.clip()`, `.add()`, `.mul()`, `.soft_clip()`, `.offset()`
+- [x] `nyx_prelude::play(signal)` function — wraps all cpal boilerplate
+- [x] `nyx-prelude` re-exports
 
-### Phase 3 — Primitive Palette
-- [ ] Oscillators: `osc::sine`, `osc::saw`, `osc::square`, `osc::triangle`
-- [ ] Noise: `osc::noise::white()`, `osc::noise::pink()`
-- [ ] All oscillators: frequency accepts `Param<S>`
-- [ ] Phase tracked as normalised f32 in [0, 1), incremented by `freq / sample_rate`
-- [ ] Resonant Low-Pass and High-Pass (Biquad, Transposed Direct Form II)
-- [ ] Filter coefficient smoothing (one-pole) to prevent clicks
-- [ ] Gain, soft clip (tanh), hard clip, peak limiter
+### Phase 3 — Primitive Palette (Complete)
+- [x] Oscillators: `osc::sine`, `osc::saw`, `osc::square`, `osc::triangle`
+- [x] Noise: `osc::noise::white(seed)`, `osc::noise::pink(seed)`
+- [x] All oscillators: frequency accepts `IntoParam` (f32 or Signal)
+- [x] Phase tracked as normalised f32 in [0, 1), incremented by `freq / sample_rate`
+- [x] Resonant Low-Pass and High-Pass (Biquad, Transposed Direct Form II)
+- [x] Filter coefficient smoothing (one-pole ~5ms) to prevent clicks
+- [x] Gain, soft clip (tanh), hard clip, peak limiter
 
-### Phase 4 — Time & The Pulse
-- [ ] BPM-based global clock driven by `AudioContext.tick`
-- [ ] `clock.beat()`, `clock.bar()`, `clock.phase_in_beat()` as `f32`
-- [ ] BPM is a `Param<S>` (tempo can be modulated)
-- [ ] Quantisation: `clock.snap(tick, grid)`
-- [ ] Trigger-based ADSR envelopes
-- [ ] Time-travel automation: `signal.follow(|t| expr)`
+### Phase 4 — Time & The Pulse (Complete)
+- [x] BPM-based global clock driven by `AudioContext.tick` (f64 accumulator)
+- [x] `clock.tick(ctx)` returns `ClockState` with `.beat`, `.bar`, `.phase_in_beat`, `.phase_in_bar`
+- [x] BPM is a `Param<S>` (tempo can be modulated)
+- [x] Quantisation: `Clock::snap(beat, grid)`
+- [x] Trigger-based ADSR envelopes (attack/decay/sustain/release)
+- [x] Time-travel automation: `signal.follow(|t| expr)` and `automation(|t| expr)`
 
-### Phase 5 — Music Theory Module (`nyx-seq`)
-- [ ] `Note` type: `Note::A4`, `Note::from_midi(n)`, `Note::to_freq()`
-- [ ] `NoteName` string parsing ("C#4", "Bb2", etc.)
-- [ ] Scale library: Major, Minor, Pentatonic, Dorian, Phrygian, Lydian,
+### Phase 5 — Music Theory Module (`nyx-seq`) (Complete)
+- [x] `Note` type: `Note::A4`, `Note::from_midi(n)`, `Note::to_freq()`
+- [x] `Note::parse("C#4")` string parsing ("C#4", "Bb2", etc.)
+- [x] Scale library: Major, Minor, Pentatonic, Dorian, Phrygian, Lydian,
       Mixolydian, Locrian, Whole Tone, Chromatic
-- [ ] `Scale::Minor("C").snap(val)` — snaps f32 to nearest note in scale
-- [ ] Chord types: Maj, Min, Dim, Aug, Maj7, Min7, Dom7, Sus2, Sus4
-- [ ] Interval helpers: `.transpose(semitones)`, `.up_octave()`, `.down_octave()`
+- [x] `Scale::minor("C").snap(val)` — snaps f32 to nearest note in scale
+- [x] Chord types: Maj, Min, Dim, Aug, Maj7, Min7, Dom7, Sus2, Sus4
+- [x] Interval helpers: `.transpose(semitones)`, `.up_octave()`, `.down_octave()`
 
-### Phase 6 — The Visual Mirror
-- [ ] `signal.scope()` → `ScopeHandle` (lock-free shared ring buffer of samples)
-- [ ] `signal.inspect()` → closure called per-sample, stays on audio thread
-- [ ] `signal.spectrum()` → `SpectrumHandle` (FFT magnitude bins via `spectrum-analyzer`)
-- [ ] Configurable FFT frame size and window function (Hann, Blackman)
-- [ ] Example: Nannou oscilloscope in < 50 lines
-- [ ] Example: Bevy spectrum visualiser as a system
+### Phase 6 — The Visual Mirror (Complete)
+- [x] `signal.scope(buffer_size)` → `(Scope, ScopeHandle)` (lock-free rtrb ring buffer)
+- [x] `signal.inspect(|sample, ctx| ...)` → closure called per-sample, stays on audio thread
+- [x] `signal.spectrum(config)` → `(Spectrum, SpectrumHandle)` (FFT magnitude bins via `spectrum-analyzer`)
+- [x] Configurable FFT frame size and window function (Hann, Blackman)
+- [ ] Example: Nannou oscilloscope in < 50 lines (deferred — infrastructure ready)
+- [ ] Example: Bevy spectrum visualiser as a system (deferred — infrastructure ready)
 
 ### Phase 7 — Patterns & Sequencing
 - [ ] Step sequencer: `Sequence::new(120).every(Beat(0.25), |t| kick.trigger())`

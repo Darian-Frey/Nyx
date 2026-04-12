@@ -39,9 +39,9 @@ use nyx_prelude::*;
 
 fn main() {
     // LFO-modulated filter on a sawtooth
-    let lfo = osc::sine(0.5).amp(400.0).add(800.0);
-    let sound = osc::saw(220).lowpass(lfo);
-    nyx::play(sound);
+    let lfo = osc::sine(0.5).amp(400.0).offset(800.0);
+    let sound = osc::saw(220.0).lowpass(lfo, 0.707);
+    play(sound).unwrap();
 }
 ```
 
@@ -75,13 +75,13 @@ Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development
 | Phase | Description | Status |
 |---|---|---|
 | 0 | Architecture spike — Signal trait, Param, VoicePool | Done |
-| 1 | Night-safe core — cpal, SPSC bridge, no-alloc guard | Next |
-| 2 | Fluent API — combinators, `nyx::play` | Planned |
-| 3 | Primitive palette — oscillators, filters, noise | Planned |
-| 4 | Time & the pulse — clock, envelopes, automation | Planned |
-| 5 | Music theory — notes, scales, chords | Planned |
-| 6 | Visual mirror — scope, spectrum, FFT | Planned |
-| 7 | Patterns & sequencing — step seq, Euclidean rhythms | Planned |
+| 1 | Night-safe core — cpal, SPSC bridge, no-alloc guard | Done |
+| 2 | Fluent API — combinators, `nyx::play` | Done |
+| 3 | Primitive palette — oscillators, filters, noise | Done |
+| 4 | Time & the pulse — clock, envelopes, automation | Done |
+| 5 | Music theory — notes, scales, chords | Done |
+| 6 | Visual mirror — scope, spectrum, FFT | Done |
+| 7 | Patterns & sequencing — step seq, Euclidean rhythms | Next |
 | 8 | Macro-synth layer — instruments, patches | Planned |
 | 9 | MIDI & live input | Planned |
 | 10 | Iced GUI widgets | Planned |
