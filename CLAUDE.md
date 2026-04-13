@@ -233,6 +233,55 @@ has passing tests. Current status: **All phases complete (0–11). 229 tests pas
 
 ---
 
+## Post-Phase-11 Backlog
+
+All planned phases are complete. Remaining items are deferred features and
+polish work.
+
+### Deferred from Earlier Phases
+
+- [ ] **Cookbook examples** — each phase was supposed to ship with 2 cookbook
+      examples in `examples/cookbook/` (≤ 20 lines each, real musical result).
+      Target list:
+  - [ ] `dubstep_wobble.rs` — LFO on filter cutoff, BPM-synced
+  - [ ] `wind.rs` — pink noise + slow random LFO on gain
+  - [ ] `generative_melody.rs` — Euclidean rhythm + scale snap + seeded RNG
+  - [ ] `nannou_scope.rs` — waveform visualiser in Nannou
+  - [ ] `midi_filter.rs` — MIDI CC mapped to filter cutoff
+- [ ] **Nannou oscilloscope example** (Phase 6 deferred item)
+- [ ] **Bevy spectrum visualiser example** (Phase 6 deferred item)
+- [ ] **DAW bridge via JACK/PipeWire** (Phase 11 stretch goal)
+
+### Polish & Infrastructure
+
+- [ ] **License files** — add `LICENSE-MIT` and `LICENSE-APACHE` to the repo
+      root (currently referenced in Cargo.toml but files missing).
+- [ ] **CI pipeline** — GitHub Actions workflow running:
+  - `cargo build --workspace`
+  - `cargo test --workspace`
+  - `cargo clippy --workspace -- -D warnings`
+  - `cargo fmt --check`
+  - No-alloc guard test with `GuardedAllocator`
+  - Golden-file regression tests
+  - `cargo audit` and `cargo deny`
+- [ ] **`nyx-prelude` completeness** — re-export all Phase 4–11 types from
+      `nyx-seq` (Clock, Adsr, Note, Scale, Chord, Pattern, Euclid, Rng,
+      Sequence, SubSynth, etc.) so users get everything with one import.
+- [ ] **Widget interaction tests** — the Phase 10 mouse wiring works but has
+      no automated tests. Add tests that drive `canvas::Program::update()`
+      with synthetic events and verify state changes.
+- [ ] **Documentation** — update `docs/manual.md` whenever new public APIs
+      are added. Keep examples in sync with actual method signatures.
+- [ ] **Examples/sketches directory** — expand `examples/sketches/` with
+      more starter sketches for hot-reload users.
+
+### Future (v2.0)
+
+- [ ] WASM target (explicitly deferred to v2.0)
+- [ ] Multi-channel (surround) output support beyond stereo
+
+---
+
 ## Real-Time Safety Rules (Enforced — Not Advisory)
 
 These are compiler-level rules, not style preferences:
