@@ -8,6 +8,8 @@ pub mod pattern;
 pub mod euclid;
 pub mod random;
 pub mod sequence;
+pub mod inst;
+pub mod synth;
 
 pub use clock::{clock, Clock, ClockState};
 pub use envelope::{adsr, Adsr, Stage};
@@ -19,3 +21,4 @@ pub use pattern::Pattern;
 pub use euclid::Euclid;
 pub use random::{seeded, Rng};
 pub use sequence::{Sequence, StepEvent};
+pub use synth::{SubSynth, SynthPatch, OscShape, FilterType, PatchError};

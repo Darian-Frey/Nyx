@@ -134,7 +134,7 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **Phase 8 is next. Phases 0–7 complete (178 tests passing).**
+has passing tests. Current status: **Phase 9 is next. Phases 0–8 complete (197 tests passing).**
 
 ### Phase 0 — Architecture Spike (Complete)
 - [x] Create Cargo workspace with all five crate stubs
@@ -201,14 +201,14 @@ has passing tests. Current status: **Phase 8 is next. Phases 0–7 complete (178
 - [x] Pattern combinators: `.reverse()`, `.retrograde()`, `.invert()`,
       `.concat()`, `.interleave()`, `.rotate()`
 
-### Phase 8 — Macro-Synth Layer
-- [ ] `inst::kick()`, `inst::snare()`, `inst::hihat(open)`, `inst::drone(note)`,
+### Phase 8 — Macro-Synth Layer (Complete)
+- [x] `inst::kick()`, `inst::snare()`, `inst::hihat(open)`, `inst::drone(note)`,
       `inst::riser(duration)`, `inst::pad(chord)`
-- [ ] All instruments built from `nyx-core` primitives (they are documentation)
-- [ ] `SubSynth` template: oscillator → filter → ADSR → gain
-- [ ] `SynthPatch` enum-based IR for serde serialisation
-- [ ] `patch.save("name.toml")`, `SubSynth::load("name.toml")`
-- [ ] Note: `dyn Signal` is not serialisable. Only preset instruments support
+- [x] All instruments built from `nyx-core` primitives (they are documentation)
+- [x] `SubSynth` template: oscillator → filter → ADSR → gain
+- [x] `SynthPatch` enum-based IR for serde serialisation
+- [x] `patch.save("name.toml")`, `SubSynth::load("name.toml")`
+- [x] Note: `dyn Signal` is not serialisable. Only preset instruments support
       snapshots. Document this clearly.
 
 ### Phase 9 — MIDI & Live Input
