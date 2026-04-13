@@ -1,0 +1,201 @@
+//! Horizontal and vertical slider widgets drawn with iced `Canvas`.
+
+use iced::mouse;
+use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke};
+use iced::{Element, Length, Point, Rectangle, Theme};
+
+use crate::theme::NyxColors;
+
+/// State for a slider.
+#[derive(Debug, Clone)]
+pub struct SliderState {
+    /// Current value in [0, 1].
+    pub value: f32,
+}
+
+impl Default for SliderState {
+    fn default() -> Self {
+        Self { value: 0.5 }
+    }
+}
+
+impl SliderState {
+    pub fn new(value: f32) -> Self {
+        Self {
+            value: value.clamp(0.0, 1.0),
+        }
+    }
+}
+
+/// Messages produced by sliders.
+#[derive(Debug, Clone, Copy)]
+pub enum SliderMessage {
+    Changed(f32),
+}
+
+// ─── Horizontal Slider ──────────────────────────────────────────────
+
+/// A horizontal slider widget.
+pub struct HSlider<'a> {
+    state: &'a SliderState,
+    width: f32,
+    height: f32,
+}
+
+impl<'a> HSlider<'a> {
+    pub fn new(state: &'a SliderState) -> Self {
+        Self {
+            state,
+            width: 200.0,
+            height: 24.0,
+        }
+    }
+
+    pub fn width(mut self, w: f32) -> Self {
+        self.width = w;
+        self
+    }
+
+    pub fn view(self) -> Element<'a, SliderMessage> {
+        Canvas::new(HSliderCanvas {
+            value: self.state.value,
+        })
+        .width(Length::Fixed(self.width))
+        .height(Length::Fixed(self.height))
+        .into()
+    }
+}
+
+struct HSliderCanvas {
+    value: f32,
+}
+
+impl canvas::Program<SliderMessage> for HSliderCanvas {
+    type State = ();
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &iced::Renderer,
+        _theme: &Theme,
+        bounds: Rectangle,
+        _cursor: mouse::Cursor,
+    ) -> Vec<canvas::Geometry> {
+        let mut frame = Frame::new(renderer, bounds.size());
+        let y = bounds.height / 2.0;
+        let pad = 4.0;
+
+        // Track
+        let track = Path::line(
+            Point::new(pad, y),
+            Point::new(bounds.width - pad, y),
+        );
+        frame.stroke(
+            &track,
+            Stroke::default()
+                .with_color(NyxColors::TRACK)
+                .with_width(4.0),
+        );
+
+        // Fill
+        let fill_x = pad + self.value * (bounds.width - 2.0 * pad);
+        let fill = Path::line(Point::new(pad, y), Point::new(fill_x, y));
+        frame.stroke(
+            &fill,
+            Stroke::default()
+                .with_color(NyxColors::FILL)
+                .with_width(4.0),
+        );
+
+        // Thumb
+        let thumb = Path::circle(Point::new(fill_x, y), 6.0);
+        frame.fill(&thumb, NyxColors::ACCENT);
+
+        vec![frame.into_geometry()]
+    }
+}
+
+// ─── Vertical Slider ────────────────────────────────────────────────
+
+/// A vertical slider widget.
+pub struct VSlider<'a> {
+    state: &'a SliderState,
+    width: f32,
+    height: f32,
+}
+
+impl<'a> VSlider<'a> {
+    pub fn new(state: &'a SliderState) -> Self {
+        Self {
+            state,
+            width: 24.0,
+            height: 200.0,
+        }
+    }
+
+    pub fn height(mut self, h: f32) -> Self {
+        self.height = h;
+        self
+    }
+
+    pub fn view(self) -> Element<'a, SliderMessage> {
+        Canvas::new(VSliderCanvas {
+            value: self.state.value,
+        })
+        .width(Length::Fixed(self.width))
+        .height(Length::Fixed(self.height))
+        .into()
+    }
+}
+
+struct VSliderCanvas {
+    value: f32,
+}
+
+impl canvas::Program<SliderMessage> for VSliderCanvas {
+    type State = ();
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &iced::Renderer,
+        _theme: &Theme,
+        bounds: Rectangle,
+        _cursor: mouse::Cursor,
+    ) -> Vec<canvas::Geometry> {
+        let mut frame = Frame::new(renderer, bounds.size());
+        let x = bounds.width / 2.0;
+        let pad = 4.0;
+
+        // Track (top to bottom)
+        let track = Path::line(
+            Point::new(x, pad),
+            Point::new(x, bounds.height - pad),
+        );
+        frame.stroke(
+            &track,
+            Stroke::default()
+                .with_color(NyxColors::TRACK)
+                .with_width(4.0),
+        );
+
+        // Fill (bottom-up: value=0 at bottom, value=1 at top)
+        let fill_y = bounds.height - pad - self.value * (bounds.height - 2.0 * pad);
+        let fill = Path::line(
+            Point::new(x, bounds.height - pad),
+            Point::new(x, fill_y),
+        );
+        frame.stroke(
+            &fill,
+            Stroke::default()
+                .with_color(NyxColors::FILL)
+                .with_width(4.0),
+        );
+
+        // Thumb
+        let thumb = Path::circle(Point::new(x, fill_y), 6.0);
+        frame.fill(&thumb, NyxColors::ACCENT);
+
+        vec![frame.into_geometry()]
+    }
+}

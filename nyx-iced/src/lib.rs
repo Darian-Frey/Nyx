@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+pub mod theme;
+pub mod knob;
+pub mod slider;
+pub mod xypad;
+pub mod oscilloscope;
+pub mod spectrum_view;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use theme::NyxColors;
+pub use knob::{Knob, KnobMessage, KnobState};
+pub use slider::{HSlider, VSlider, SliderMessage, SliderState};
+pub use xypad::{XYPad, XYPadMessage, XYPadState};
+pub use oscilloscope::OscilloscopeCanvas;
+pub use spectrum_view::SpectrumCanvas;

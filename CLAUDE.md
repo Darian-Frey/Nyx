@@ -134,7 +134,7 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **Phase 10 is next. Phases 0–9 complete (213 tests passing).**
+has passing tests. Current status: **Phase 11 is next. Phases 0–10 complete (224 tests passing).**
 
 ### Phase 0 — Architecture Spike (Complete)
 - [x] Create Cargo workspace with all five crate stubs
@@ -218,11 +218,11 @@ has passing tests. Current status: **Phase 10 is next. Phases 0–9 complete (21
 - [x] OSC input via `rosc` with `OscParam` atomic float store
 - [x] `mic()` returns a `MicSignal` from the default input device
 
-### Phase 10 — nyx-iced GUI (Optional Crate)
-- [ ] Knob, HSlider, VSlider, XYPad via `iced_audio`
-- [ ] `OscilloscopeCanvas` consuming a `ScopeHandle`
-- [ ] `SpectrumCanvas` consuming a `SpectrumHandle`
-- [ ] Nyx Midnight Theme (deep grays, neon accent, monospace)
+### Phase 10 — nyx-iced GUI (Complete)
+- [x] Knob, HSlider, VSlider, XYPad via iced `Canvas` (custom-drawn)
+- [x] `OscilloscopeCanvas` consuming a `ScopeHandle`
+- [x] `SpectrumCanvas` consuming a `SpectrumHandle`
+- [x] Nyx Midnight Theme (deep grays, neon accent, monospace)
 
 ### Phase 11 — Live-Diff / Hot Reload (Moonshot)
 - [ ] DSP logic as `cdylib`, hot-reloaded via `hot-lib-reloader`

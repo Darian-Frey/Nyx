@@ -4,7 +4,9 @@
 //! and streams samples into a lock-free ring buffer. The `MicSignal`
 //! reads from the buffer on the audio output thread.
 
-use rtrb::{Consumer, RingBuffer};
+use rtrb::Consumer;
+#[cfg(feature = "audio")]
+use rtrb::RingBuffer;
 
 use crate::signal::{AudioContext, Signal};
 
