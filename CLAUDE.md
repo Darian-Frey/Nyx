@@ -134,7 +134,7 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **Phase 7 is next. Phases 0–6 complete (143 tests passing).**
+has passing tests. Current status: **Phase 8 is next. Phases 0–7 complete (178 tests passing).**
 
 ### Phase 0 — Architecture Spike (Complete)
 - [x] Create Cargo workspace with all five crate stubs
@@ -193,13 +193,13 @@ has passing tests. Current status: **Phase 7 is next. Phases 0–6 complete (143
 - [ ] Example: Nannou oscilloscope in < 50 lines (deferred — infrastructure ready)
 - [ ] Example: Bevy spectrum visualiser as a system (deferred — infrastructure ready)
 
-### Phase 7 — Patterns & Sequencing
-- [ ] Step sequencer: `Sequence::new(120).every(Beat(0.25), |t| kick.trigger())`
-- [ ] Euclidean rhythms: `Euclid::new(hits, steps)` with `.rotate(offset)`
-- [ ] Seeded randomness: `nyx::random::seeded(42)` (portable PRNG — not OS RNG)
-- [ ] `rng.next_note_in(scale)` — scale-aware random note
-- [ ] Pattern combinators: `.reverse()`, `.retrograde()`, `.invert()`,
-      `.concat()`, `.interleave()`
+### Phase 7 — Patterns & Sequencing (Complete)
+- [x] Step sequencer: `Sequence::new(pattern, grid)` driven by `ClockState`
+- [x] Euclidean rhythms: `Euclid::generate(hits, steps)` with `.rotate(offset)`
+- [x] Seeded randomness: `nyx_seq::seeded(42)` (portable xorshift64 PRNG)
+- [x] `rng.next_note_in(scale)` — scale-aware random note
+- [x] Pattern combinators: `.reverse()`, `.retrograde()`, `.invert()`,
+      `.concat()`, `.interleave()`, `.rotate()`
 
 ### Phase 8 — Macro-Synth Layer
 - [ ] `inst::kick()`, `inst::snare()`, `inst::hihat(open)`, `inst::drone(note)`,

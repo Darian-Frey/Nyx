@@ -81,8 +81,8 @@ Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development
 | 4 | Time & the pulse — clock, envelopes, automation | Done |
 | 5 | Music theory — notes, scales, chords | Done |
 | 6 | Visual mirror — scope, spectrum, FFT | Done |
-| 7 | Patterns & sequencing — step seq, Euclidean rhythms | Next |
-| 8 | Macro-synth layer — instruments, patches | Planned |
+| 7 | Patterns & sequencing — step seq, Euclidean rhythms | Done |
+| 8 | Macro-synth layer — instruments, patches | Next |
 | 9 | MIDI & live input | Planned |
 | 10 | Iced GUI widgets | Planned |
 | 11 | Live-diff / hot reload | Planned |

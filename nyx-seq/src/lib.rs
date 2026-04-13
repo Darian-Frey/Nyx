@@ -4,6 +4,10 @@ pub mod automation;
 pub mod note;
 pub mod scale;
 pub mod chord;
+pub mod pattern;
+pub mod euclid;
+pub mod random;
+pub mod sequence;
 
 pub use clock::{clock, Clock, ClockState};
 pub use envelope::{adsr, Adsr, Stage};
@@ -11,3 +15,7 @@ pub use automation::{automation, Automation, AutomationExt, Follow};
 pub use note::Note;
 pub use scale::{Scale, ScaleMode};
 pub use chord::{Chord, ChordType};
+pub use pattern::Pattern;
+pub use euclid::Euclid;
+pub use random::{seeded, Rng};
+pub use sequence::{Sequence, StepEvent};
