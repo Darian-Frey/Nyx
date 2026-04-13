@@ -134,7 +134,7 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **Phase 11 is next. Phases 0–10 complete (224 tests passing).**
+has passing tests. Current status: **All phases complete (0–11). 229 tests passing.**
 
 ### Phase 0 — Architecture Spike (Complete)
 - [x] Create Cargo workspace with all five crate stubs
@@ -224,12 +224,12 @@ has passing tests. Current status: **Phase 11 is next. Phases 0–10 complete (2
 - [x] `SpectrumCanvas` consuming a `SpectrumHandle`
 - [x] Nyx Midnight Theme (deep grays, neon accent, monospace)
 
-### Phase 11 — Live-Diff / Hot Reload (Moonshot)
-- [ ] DSP logic as `cdylib`, hot-reloaded via `hot-lib-reloader`
-- [ ] Graceful handoff: old chain faded to silence before new chain loads
-- [ ] `nyx-cli` watches a `.rs` sketch file, recompiles on save
-- [ ] Target: < 2s from file save to audible change
-- [ ] DAW bridge via JACK/PipeWire (stretch goal)
+### Phase 11 — Live-Diff / Hot Reload (Complete)
+- [x] DSP logic as `cdylib`, hot-reloaded via `libloading`
+- [x] Graceful handoff: old chain crossfaded to silence before new chain loads
+- [x] `nyx-cli` watches a `.rs` sketch file, recompiles on save via `notify`
+- [x] Target: < 2s from file save to audible change (release builds)
+- [ ] DAW bridge via JACK/PipeWire (stretch goal — deferred)
 
 ---
 

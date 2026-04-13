@@ -16,6 +16,7 @@ pub mod spectrum;
 pub mod midi;
 pub mod osc_input;
 pub mod mic;
+pub mod hotswap;
 
 pub use signal::{
     AudioContext, Signal, SignalExt,

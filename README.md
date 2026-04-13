@@ -85,7 +85,7 @@ Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development
 | 8 | Macro-synth layer — instruments, patches | Done |
 | 9 | MIDI & live input | Done |
 | 10 | Iced GUI widgets | Done |
-| 11 | Live-diff / hot reload | Next |
+| 11 | Live-diff / hot reload | Done |
 
 ## Requirements
 
