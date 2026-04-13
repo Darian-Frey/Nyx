@@ -83,8 +83,8 @@ Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development
 | 6 | Visual mirror — scope, spectrum, FFT | Done |
 | 7 | Patterns & sequencing — step seq, Euclidean rhythms | Done |
 | 8 | Macro-synth layer — instruments, patches | Done |
-| 9 | MIDI & live input | Next |
-| 10 | Iced GUI widgets | Planned |
+| 9 | MIDI & live input | Done |
+| 10 | Iced GUI widgets | Next |
 | 11 | Live-diff / hot reload | Planned |
 
 ## Requirements

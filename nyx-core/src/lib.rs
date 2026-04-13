@@ -13,6 +13,9 @@ pub mod dynamics;
 pub mod scope;
 pub mod inspect;
 pub mod spectrum;
+pub mod midi;
+pub mod osc_input;
+pub mod mic;
 
 pub use signal::{
     AudioContext, Signal, SignalExt,
@@ -32,3 +35,14 @@ pub use inspect::{Inspect, InspectExt};
 pub use spectrum::{
     FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn,
 };
+pub use midi::{
+    parse_midi, midi_bridge, CcMap, CcSignal, CcWriter,
+    MidiEvent, MidiReceiver, MidiSender,
+};
+#[cfg(feature = "midi")]
+pub use midi::{open_midi_input, open_midi_input_named, MidiConnection, MidiError};
+pub use osc_input::{OscParam, OscParamWriter, OscSignal};
+#[cfg(feature = "osc")]
+pub use osc_input::{osc_listen, OscListener, OscError};
+#[cfg(feature = "audio")]
+pub use mic::{mic, mic_with_buffer, MicHandle, MicError, MicSignal};

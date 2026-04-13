@@ -134,7 +134,7 @@ Do not add `iced` or `iced_audio` as dependencies of `nyx-core` or `nyx-seq`.
 ## Development Phases
 
 Work through phases in order. Do not start a phase until the previous one
-has passing tests. Current status: **Phase 9 is next. Phases 0–8 complete (197 tests passing).**
+has passing tests. Current status: **Phase 10 is next. Phases 0–9 complete (213 tests passing).**
 
 ### Phase 0 — Architecture Spike (Complete)
 - [x] Create Cargo workspace with all five crate stubs
@@ -211,12 +211,12 @@ has passing tests. Current status: **Phase 9 is next. Phases 0–8 complete (197
 - [x] Note: `dyn Signal` is not serialisable. Only preset instruments support
       snapshots. Document this clearly.
 
-### Phase 9 — MIDI & Live Input
-- [ ] `midir` MIDI input → CC values mapped to `Param<S>` via `MidiMap`
-- [ ] One-pole smoothing on CC values to prevent zipper noise (~5ms default)
-- [ ] Note-on/off events → voice pool via SPSC bridge (no alloc in callback)
-- [ ] OSC input via `rosc`
-- [ ] `input::mic()` returns a `Signal` from the default input device
+### Phase 9 — MIDI & Live Input (Complete)
+- [x] `midir` MIDI input → CC values mapped to `CcMap` with atomic reads
+- [x] One-pole smoothing on CC values to prevent zipper noise (~5ms default)
+- [x] Note-on/off events → voice pool via SPSC bridge (no alloc in callback)
+- [x] OSC input via `rosc` with `OscParam` atomic float store
+- [x] `mic()` returns a `MicSignal` from the default input device
 
 ### Phase 10 — nyx-iced GUI (Optional Crate)
 - [ ] Knob, HSlider, VSlider, XYPad via `iced_audio`
