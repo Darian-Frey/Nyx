@@ -1,7 +1,7 @@
 //! Horizontal and vertical slider widgets drawn with iced `Canvas`.
 
 use iced::mouse;
-use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke};
+use iced::widget::canvas::{self, Canvas, Event, Frame, Path, Stroke};
 use iced::{Element, Length, Point, Rectangle, Theme};
 
 use crate::theme::NyxColors;
@@ -33,9 +33,14 @@ pub enum SliderMessage {
     Changed(f32),
 }
 
+/// Per-instance interaction state.
+#[derive(Default)]
+pub struct SliderInteraction {
+    dragging: bool,
+}
+
 // ─── Horizontal Slider ──────────────────────────────────────────────
 
-/// A horizontal slider widget.
 pub struct HSlider<'a> {
     state: &'a SliderState,
     width: f32,
@@ -71,7 +76,47 @@ struct HSliderCanvas {
 }
 
 impl canvas::Program<SliderMessage> for HSliderCanvas {
-    type State = ();
+    type State = SliderInteraction;
+
+    fn update(
+        &self,
+        state: &mut Self::State,
+        event: Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> (canvas::event::Status, Option<SliderMessage>) {
+        let Some(pos) = cursor.position_in(bounds) else {
+            if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
+                state.dragging = false;
+            }
+            return (canvas::event::Status::Ignored, None);
+        };
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                state.dragging = true;
+                let pad = 4.0;
+                let new_value = ((pos.x - pad) / (bounds.width - 2.0 * pad)).clamp(0.0, 1.0);
+                (
+                    canvas::event::Status::Captured,
+                    Some(SliderMessage::Changed(new_value)),
+                )
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                state.dragging = false;
+                (canvas::event::Status::Captured, None)
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) if state.dragging => {
+                let pad = 4.0;
+                let new_value = ((pos.x - pad) / (bounds.width - 2.0 * pad)).clamp(0.0, 1.0);
+                (
+                    canvas::event::Status::Captured,
+                    Some(SliderMessage::Changed(new_value)),
+                )
+            }
+            _ => (canvas::event::Status::Ignored, None),
+        }
+    }
 
     fn draw(
         &self,
@@ -85,39 +130,37 @@ impl canvas::Program<SliderMessage> for HSliderCanvas {
         let y = bounds.height / 2.0;
         let pad = 4.0;
 
-        // Track
-        let track = Path::line(
-            Point::new(pad, y),
-            Point::new(bounds.width - pad, y),
-        );
-        frame.stroke(
-            &track,
-            Stroke::default()
-                .with_color(NyxColors::TRACK)
-                .with_width(4.0),
-        );
+        let track = Path::line(Point::new(pad, y), Point::new(bounds.width - pad, y));
+        frame.stroke(&track, Stroke::default().with_color(NyxColors::TRACK).with_width(4.0));
 
-        // Fill
         let fill_x = pad + self.value * (bounds.width - 2.0 * pad);
         let fill = Path::line(Point::new(pad, y), Point::new(fill_x, y));
-        frame.stroke(
-            &fill,
-            Stroke::default()
-                .with_color(NyxColors::FILL)
-                .with_width(4.0),
-        );
+        frame.stroke(&fill, Stroke::default().with_color(NyxColors::FILL).with_width(4.0));
 
-        // Thumb
         let thumb = Path::circle(Point::new(fill_x, y), 6.0);
         frame.fill(&thumb, NyxColors::ACCENT);
 
         vec![frame.into_geometry()]
     }
+
+    fn mouse_interaction(
+        &self,
+        state: &Self::State,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> mouse::Interaction {
+        if state.dragging {
+            mouse::Interaction::Grabbing
+        } else if cursor.is_over(bounds) {
+            mouse::Interaction::Pointer
+        } else {
+            mouse::Interaction::default()
+        }
+    }
 }
 
 // ─── Vertical Slider ────────────────────────────────────────────────
 
-/// A vertical slider widget.
 pub struct VSlider<'a> {
     state: &'a SliderState,
     width: f32,
@@ -153,7 +196,50 @@ struct VSliderCanvas {
 }
 
 impl canvas::Program<SliderMessage> for VSliderCanvas {
-    type State = ();
+    type State = SliderInteraction;
+
+    fn update(
+        &self,
+        state: &mut Self::State,
+        event: Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> (canvas::event::Status, Option<SliderMessage>) {
+        let Some(pos) = cursor.position_in(bounds) else {
+            if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
+                state.dragging = false;
+            }
+            return (canvas::event::Status::Ignored, None);
+        };
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                state.dragging = true;
+                let pad = 4.0;
+                // Inverted: top = 1.0, bottom = 0.0
+                let new_value =
+                    (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
+                (
+                    canvas::event::Status::Captured,
+                    Some(SliderMessage::Changed(new_value)),
+                )
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                state.dragging = false;
+                (canvas::event::Status::Captured, None)
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) if state.dragging => {
+                let pad = 4.0;
+                let new_value =
+                    (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
+                (
+                    canvas::event::Status::Captured,
+                    Some(SliderMessage::Changed(new_value)),
+                )
+            }
+            _ => (canvas::event::Status::Ignored, None),
+        }
+    }
 
     fn draw(
         &self,
@@ -167,35 +253,31 @@ impl canvas::Program<SliderMessage> for VSliderCanvas {
         let x = bounds.width / 2.0;
         let pad = 4.0;
 
-        // Track (top to bottom)
-        let track = Path::line(
-            Point::new(x, pad),
-            Point::new(x, bounds.height - pad),
-        );
-        frame.stroke(
-            &track,
-            Stroke::default()
-                .with_color(NyxColors::TRACK)
-                .with_width(4.0),
-        );
+        let track = Path::line(Point::new(x, pad), Point::new(x, bounds.height - pad));
+        frame.stroke(&track, Stroke::default().with_color(NyxColors::TRACK).with_width(4.0));
 
-        // Fill (bottom-up: value=0 at bottom, value=1 at top)
         let fill_y = bounds.height - pad - self.value * (bounds.height - 2.0 * pad);
-        let fill = Path::line(
-            Point::new(x, bounds.height - pad),
-            Point::new(x, fill_y),
-        );
-        frame.stroke(
-            &fill,
-            Stroke::default()
-                .with_color(NyxColors::FILL)
-                .with_width(4.0),
-        );
+        let fill = Path::line(Point::new(x, bounds.height - pad), Point::new(x, fill_y));
+        frame.stroke(&fill, Stroke::default().with_color(NyxColors::FILL).with_width(4.0));
 
-        // Thumb
         let thumb = Path::circle(Point::new(x, fill_y), 6.0);
         frame.fill(&thumb, NyxColors::ACCENT);
 
         vec![frame.into_geometry()]
+    }
+
+    fn mouse_interaction(
+        &self,
+        state: &Self::State,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> mouse::Interaction {
+        if state.dragging {
+            mouse::Interaction::Grabbing
+        } else if cursor.is_over(bounds) {
+            mouse::Interaction::Pointer
+        } else {
+            mouse::Interaction::default()
+        }
     }
 }

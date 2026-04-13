@@ -4,5 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-nyx-core = { path = "../nyx-core", default-features = false }
-iced = { version = "0.13", features = ["canvas"] }
+nyx-core = { path = "../nyx-core" }
+iced = { version = "0.13", features = ["canvas", "tokio"] }
+
+[[example]]
+name = "demo"
+required-features = []

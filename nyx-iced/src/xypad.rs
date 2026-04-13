@@ -1,7 +1,7 @@
 //! XY Pad widget: a 2D control surface drawn with iced `Canvas`.
 
 use iced::mouse;
-use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke};
+use iced::widget::canvas::{self, Canvas, Event, Frame, Path, Stroke};
 use iced::{Element, Length, Point, Rectangle, Theme};
 
 use crate::theme::NyxColors;
@@ -34,6 +34,12 @@ impl XYPadState {
 #[derive(Debug, Clone, Copy)]
 pub enum XYPadMessage {
     Changed { x: f32, y: f32 },
+}
+
+/// Per-instance interaction state.
+#[derive(Default)]
+pub struct XYPadInteraction {
+    dragging: bool,
 }
 
 /// An XY pad widget.
@@ -69,7 +75,52 @@ struct XYPadCanvas {
 }
 
 impl canvas::Program<XYPadMessage> for XYPadCanvas {
-    type State = ();
+    type State = XYPadInteraction;
+
+    fn update(
+        &self,
+        state: &mut Self::State,
+        event: Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> (canvas::event::Status, Option<XYPadMessage>) {
+        let Some(pos) = cursor.position_in(bounds) else {
+            if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
+                state.dragging = false;
+            }
+            return (canvas::event::Status::Ignored, None);
+        };
+
+        let compute_xy = |pos: Point| {
+            let pad = 2.0;
+            let x = ((pos.x - pad) / (bounds.width - 2.0 * pad)).clamp(0.0, 1.0);
+            let y = (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
+            (x, y)
+        };
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                state.dragging = true;
+                let (x, y) = compute_xy(pos);
+                (
+                    canvas::event::Status::Captured,
+                    Some(XYPadMessage::Changed { x, y }),
+                )
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                state.dragging = false;
+                (canvas::event::Status::Captured, None)
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) if state.dragging => {
+                let (x, y) = compute_xy(pos);
+                (
+                    canvas::event::Status::Captured,
+                    Some(XYPadMessage::Changed { x, y }),
+                )
+            }
+            _ => (canvas::event::Status::Ignored, None),
+        }
+    }
 
     fn draw(
         &self,
@@ -85,27 +136,11 @@ impl canvas::Program<XYPadMessage> for XYPadCanvas {
         // Background
         let bg = Path::rectangle(Point::ORIGIN, bounds.size());
         frame.fill(&bg, NyxColors::BG_SURFACE);
-
-        // Border
-        frame.stroke(
-            &bg,
-            Stroke::default()
-                .with_color(NyxColors::BORDER)
-                .with_width(1.0),
-        );
+        frame.stroke(&bg, Stroke::default().with_color(NyxColors::BORDER).with_width(1.0));
 
         // Crosshair
         let px = pad + self.x * (bounds.width - 2.0 * pad);
         let py = bounds.height - pad - self.y * (bounds.height - 2.0 * pad);
-
-        let h_line = Path::line(
-            Point::new(pad, py),
-            Point::new(bounds.width - pad, py),
-        );
-        let v_line = Path::line(
-            Point::new(px, pad),
-            Point::new(px, bounds.height - pad),
-        );
 
         let crosshair_color = iced::Color::from_rgba(
             NyxColors::ACCENT.r,
@@ -113,9 +148,10 @@ impl canvas::Program<XYPadMessage> for XYPadCanvas {
             NyxColors::ACCENT.b,
             0.3,
         );
-        let stroke = Stroke::default()
-            .with_color(crosshair_color)
-            .with_width(1.0);
+        let stroke = Stroke::default().with_color(crosshair_color).with_width(1.0);
+
+        let h_line = Path::line(Point::new(pad, py), Point::new(bounds.width - pad, py));
+        let v_line = Path::line(Point::new(px, pad), Point::new(px, bounds.height - pad));
         frame.stroke(&h_line, stroke);
         frame.stroke(&v_line, stroke);
 
@@ -124,5 +160,20 @@ impl canvas::Program<XYPadMessage> for XYPadCanvas {
         frame.fill(&dot, NyxColors::ACCENT);
 
         vec![frame.into_geometry()]
+    }
+
+    fn mouse_interaction(
+        &self,
+        state: &Self::State,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> mouse::Interaction {
+        if state.dragging {
+            mouse::Interaction::Grabbing
+        } else if cursor.is_over(bounds) {
+            mouse::Interaction::Crosshair
+        } else {
+            mouse::Interaction::default()
+        }
     }
 }

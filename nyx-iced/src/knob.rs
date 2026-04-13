@@ -1,7 +1,7 @@
 //! A rotary knob widget drawn with iced `Canvas`.
 
 use iced::mouse;
-use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke};
+use iced::widget::canvas::{self, Canvas, Event, Frame, Path, Stroke};
 use iced::{Element, Length, Point, Rectangle, Theme};
 
 use crate::theme::NyxColors;
@@ -15,9 +15,7 @@ pub struct KnobState {
 
 impl Default for KnobState {
     fn default() -> Self {
-        Self {
-            value: 0.5,
-        }
+        Self { value: 0.5 }
     }
 }
 
@@ -51,7 +49,6 @@ impl<'a> Knob<'a> {
         self
     }
 
-    /// Render as an iced `Element`.
     pub fn view(self) -> Element<'a, KnobMessage> {
         Canvas::new(KnobCanvas {
             value: self.state.value,
@@ -66,8 +63,51 @@ struct KnobCanvas {
     value: f32,
 }
 
+/// Per-instance interaction state tracked by the canvas.
+#[derive(Default)]
+pub struct KnobInteraction {
+    dragging: bool,
+    last_y: f32,
+}
+
 impl canvas::Program<KnobMessage> for KnobCanvas {
-    type State = ();
+    type State = KnobInteraction;
+
+    fn update(
+        &self,
+        state: &mut Self::State,
+        event: Event,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> (canvas::event::Status, Option<KnobMessage>) {
+        let Some(pos) = cursor.position_in(bounds) else {
+            return (canvas::event::Status::Ignored, None);
+        };
+
+        match event {
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
+                state.dragging = true;
+                state.last_y = pos.y;
+                (canvas::event::Status::Captured, None)
+            }
+            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
+                state.dragging = false;
+                (canvas::event::Status::Captured, None)
+            }
+            Event::Mouse(mouse::Event::CursorMoved { .. }) if state.dragging => {
+                let dy = state.last_y - pos.y;
+                state.last_y = pos.y;
+                // Sensitivity: full drag over the widget height = 0→1
+                let sensitivity = 1.0 / bounds.height;
+                let new_value = (self.value + dy * sensitivity).clamp(0.0, 1.0);
+                (
+                    canvas::event::Status::Captured,
+                    Some(KnobMessage::Changed(new_value)),
+                )
+            }
+            _ => (canvas::event::Status::Ignored, None),
+        }
+    }
 
     fn draw(
         &self,
@@ -81,9 +121,8 @@ impl canvas::Program<KnobMessage> for KnobCanvas {
         let center = Point::new(bounds.width / 2.0, bounds.height / 2.0);
         let radius = bounds.width.min(bounds.height) / 2.0 - 4.0;
 
-        // Track arc (270° sweep, starting from 135°)
-        let start_angle = std::f32::consts::FRAC_PI_4 * 3.0; // 135°
-        let sweep = std::f32::consts::FRAC_PI_2 * 3.0; // 270°
+        let start_angle = std::f32::consts::FRAC_PI_4 * 3.0;
+        let sweep = std::f32::consts::FRAC_PI_2 * 3.0;
 
         // Background track
         let track = Path::circle(center, radius);
@@ -94,7 +133,7 @@ impl canvas::Program<KnobMessage> for KnobCanvas {
                 .with_width(4.0),
         );
 
-        // Value indicator: a line from center toward the current angle
+        // Value indicator line
         let value_angle = start_angle + sweep * self.value;
         let tip = Point::new(
             center.x + value_angle.cos() * radius,
@@ -117,5 +156,20 @@ impl canvas::Program<KnobMessage> for KnobCanvas {
         frame.fill(&dot, NyxColors::ACCENT);
 
         vec![frame.into_geometry()]
+    }
+
+    fn mouse_interaction(
+        &self,
+        state: &Self::State,
+        bounds: Rectangle,
+        cursor: mouse::Cursor,
+    ) -> mouse::Interaction {
+        if state.dragging {
+            mouse::Interaction::Grabbing
+        } else if cursor.is_over(bounds) {
+            mouse::Interaction::Grab
+        } else {
+            mouse::Interaction::default()
+        }
     }
 }

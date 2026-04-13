@@ -7,7 +7,7 @@ use nyx_core::{Signal, SignalExt};
 use nyx_core::filter::FilterExt;
 use nyx_core::AudioContext;
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn nyx_sketch() -> Box<dyn Signal> {
     // Saw bass at ~55 Hz (A1)
     let bass = osc::saw(55.0);
