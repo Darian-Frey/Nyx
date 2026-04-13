@@ -68,6 +68,10 @@ Nyx enforces zero allocations after the audio stream starts:
 
 These rules are enforced by a CI allocator guard, not just convention.
 
+## Documentation
+
+Full API reference and usage guide: **[docs/manual.md](docs/manual.md)**
+
 ## Status
 
 Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development roadmap.
