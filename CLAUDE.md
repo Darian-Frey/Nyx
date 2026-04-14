@@ -288,6 +288,22 @@ polish work.
       detailed phased plan (B0–B6).
 - [ ] Multi-channel (surround) output support beyond stereo
 
+### Feature Expansion
+
+Research-backed list of 15 high-value features ranked by value per
+unit effort — see **[docs/roadmap-features.md](docs/roadmap-features.md)**.
+
+**Top 5 (Sprint 1, ~1.5 weeks):**
+- Delay line with feedback (unlocks echo, chorus, Karplus-Strong)
+- WAV export (`render_to_wav`)
+- Sample playback (`Sampler::load`)
+- Probability & conditional steps for `Sequence`
+- Bitcrusher + sample-rate reducer
+
+**Tier 2** adds reverb, stereo refactor, FM operator, wavetable, SVF.
+**Tier 3** adds chorus/flanger, bus routing, compressor, granular,
+pitch detection.
+
 ---
 
 ## Real-Time Safety Rules (Enforced — Not Advisory)
