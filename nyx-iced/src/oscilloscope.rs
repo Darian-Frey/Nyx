@@ -37,8 +37,25 @@ impl OscilloscopeCanvas {
     }
 
     /// Pull new samples from the scope handle. Call this in your `update`.
+    ///
+    /// Uses a sliding-window buffer: any samples available are appended to
+    /// the tail while older samples shift left, so the display always shows
+    /// the most recent `buffer_size` samples. Prevents the "half-filled
+    /// scope" bug when the audio callback hasn't produced a full buffer's
+    /// worth of samples between render frames.
     pub fn update(&mut self, handle: &mut ScopeHandle) {
-        handle.read(&mut self.samples);
+        let buf_len = self.samples.len();
+        let mut scratch = vec![0.0_f32; buf_len];
+        let n = handle.read(&mut scratch);
+        if n == 0 {
+            return;
+        }
+        if n >= buf_len {
+            self.samples.copy_from_slice(&scratch[n - buf_len..n]);
+        } else {
+            self.samples.rotate_left(n);
+            self.samples[buf_len - n..].copy_from_slice(&scratch[..n]);
+        }
     }
 
     /// Render as an iced `Element`.

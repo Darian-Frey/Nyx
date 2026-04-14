@@ -1,11 +1,19 @@
 [package]
 name = "nyx-prelude"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [features]
 default = ["audio"]
 audio = ["nyx-core/audio"]
+midi = ["nyx-core/midi"]
+osc = ["nyx-core/osc"]
 
 [dependencies]
 nyx-core = { path = "../nyx-core", default-features = false }
+nyx-seq = { path = "../nyx-seq" }
+
+[[example]]
+name = "midi_filter"
+required-features = ["midi"]

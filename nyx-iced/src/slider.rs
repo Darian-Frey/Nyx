@@ -281,3 +281,161 @@ impl canvas::Program<SliderMessage> for VSliderCanvas {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use iced::widget::canvas::Program;
+
+    const H_BOUNDS: Rectangle = Rectangle { x: 0.0, y: 0.0, width: 200.0, height: 24.0 };
+    const V_BOUNDS: Rectangle = Rectangle { x: 0.0, y: 0.0, width: 24.0, height: 200.0 };
+
+    fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
+        mouse::Cursor::Available(Point::new(x, y))
+    }
+
+    fn press() -> Event {
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+    }
+
+    fn release() -> Event {
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+    }
+
+    fn move_to(x: f32, y: f32) -> Event {
+        Event::Mouse(mouse::Event::CursorMoved { position: Point::new(x, y) })
+    }
+
+    // ─── HSlider ────────────────────────────────────────────────────
+
+    #[test]
+    fn hslider_click_at_left_gives_zero() {
+        let canvas = HSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        // Click at x=4 (pad=4), should give value 0
+        let (_, msg) = canvas.update(&mut state, press(), H_BOUNDS, cursor_at(4.0, 12.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!(v.abs() < 0.01, "expected ~0, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn hslider_click_at_right_gives_one() {
+        let canvas = HSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        // Click at x=196 (bounds.width - pad), should give value 1
+        let (_, msg) = canvas.update(&mut state, press(), H_BOUNDS, cursor_at(196.0, 12.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!((v - 1.0).abs() < 0.01, "expected ~1, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn hslider_click_at_middle_gives_half() {
+        let canvas = HSliderCanvas { value: 0.0 };
+        let mut state = SliderInteraction::default();
+        let (_, msg) = canvas.update(&mut state, press(), H_BOUNDS, cursor_at(100.0, 12.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!((v - 0.5).abs() < 0.02, "expected ~0.5, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn hslider_drag_updates_continuously() {
+        let canvas = HSliderCanvas { value: 0.0 };
+        let mut state = SliderInteraction::default();
+
+        canvas.update(&mut state, press(), H_BOUNDS, cursor_at(50.0, 12.0));
+        let (_, msg) = canvas.update(&mut state, move_to(150.0, 12.0), H_BOUNDS, cursor_at(150.0, 12.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!(v > 0.6, "drag to right should increase value, got {v}");
+        } else {
+            panic!("expected Changed during drag");
+        }
+    }
+
+    #[test]
+    fn hslider_release_stops_drag() {
+        let canvas = HSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        canvas.update(&mut state, press(), H_BOUNDS, cursor_at(50.0, 12.0));
+        assert!(state.dragging);
+        canvas.update(&mut state, release(), H_BOUNDS, cursor_at(50.0, 12.0));
+        assert!(!state.dragging);
+    }
+
+    #[test]
+    fn hslider_drag_without_press_ignored() {
+        let canvas = HSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        let (_, msg) = canvas.update(&mut state, move_to(50.0, 12.0), H_BOUNDS, cursor_at(50.0, 12.0));
+        assert!(msg.is_none());
+    }
+
+    #[test]
+    fn hslider_press_outside_bounds_ignored() {
+        let canvas = HSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        let (status, msg) = canvas.update(&mut state, press(), H_BOUNDS, cursor_at(300.0, 300.0));
+        assert!(matches!(status, canvas::event::Status::Ignored));
+        assert!(msg.is_none());
+    }
+
+    // ─── VSlider ────────────────────────────────────────────────────
+
+    #[test]
+    fn vslider_click_at_bottom_gives_zero() {
+        let canvas = VSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        // Click at y=196 (bottom - pad), should give value 0
+        let (_, msg) = canvas.update(&mut state, press(), V_BOUNDS, cursor_at(12.0, 196.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!(v.abs() < 0.02, "expected ~0 at bottom, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn vslider_click_at_top_gives_one() {
+        let canvas = VSliderCanvas { value: 0.5 };
+        let mut state = SliderInteraction::default();
+        let (_, msg) = canvas.update(&mut state, press(), V_BOUNDS, cursor_at(12.0, 4.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!((v - 1.0).abs() < 0.02, "expected ~1 at top, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn vslider_click_at_middle_gives_half() {
+        let canvas = VSliderCanvas { value: 0.0 };
+        let mut state = SliderInteraction::default();
+        let (_, msg) = canvas.update(&mut state, press(), V_BOUNDS, cursor_at(12.0, 100.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!((v - 0.5).abs() < 0.02, "expected ~0.5, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+
+    #[test]
+    fn vslider_drag_up_increases() {
+        let canvas = VSliderCanvas { value: 0.0 };
+        let mut state = SliderInteraction::default();
+        canvas.update(&mut state, press(), V_BOUNDS, cursor_at(12.0, 150.0));
+        let (_, msg) = canvas.update(&mut state, move_to(12.0, 50.0), V_BOUNDS, cursor_at(12.0, 50.0));
+        if let Some(SliderMessage::Changed(v)) = msg {
+            assert!(v > 0.6, "drag up should increase, got {v}");
+        } else {
+            panic!("expected Changed");
+        }
+    }
+}

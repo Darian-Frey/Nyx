@@ -1,12 +1,20 @@
 [package]
 name = "nyx-iced"
-version = "0.1.0"
-edition = "2024"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
 
 [dependencies]
 nyx-core = { path = "../nyx-core" }
 iced = { version = "0.13", features = ["canvas", "tokio"] }
 
+[dev-dependencies]
+nyx-seq = { path = "../nyx-seq" }
+
 [[example]]
 name = "demo"
+required-features = []
+
+[[example]]
+name = "dubstep"
 required-features = []

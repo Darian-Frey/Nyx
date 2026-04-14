@@ -173,3 +173,142 @@ impl canvas::Program<KnobMessage> for KnobCanvas {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use iced::widget::canvas::Program;
+
+    const BOUNDS: Rectangle = Rectangle {
+        x: 0.0,
+        y: 0.0,
+        width: 100.0,
+        height: 100.0,
+    };
+
+    fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
+        mouse::Cursor::Available(Point::new(x, y))
+    }
+
+    fn press_left() -> Event {
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+    }
+
+    fn release_left() -> Event {
+        Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left))
+    }
+
+    fn move_to(x: f32, y: f32) -> Event {
+        Event::Mouse(mouse::Event::CursorMoved {
+            position: Point::new(x, y),
+        })
+    }
+
+    #[test]
+    fn press_outside_bounds_ignored() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+        let (status, msg) = canvas.update(&mut state, press_left(), BOUNDS, cursor_at(200.0, 200.0));
+        assert!(matches!(status, canvas::event::Status::Ignored));
+        assert!(msg.is_none());
+    }
+
+    #[test]
+    fn press_inside_starts_drag() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+        let (status, msg) = canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 50.0));
+        assert!(matches!(status, canvas::event::Status::Captured));
+        assert!(msg.is_none()); // press alone doesn't emit a change
+    }
+
+    #[test]
+    fn drag_up_increases_value() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+
+        // Press at y=60
+        canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 60.0));
+
+        // Drag up to y=40 (dy = 20, upward)
+        let (status, msg) = canvas.update(&mut state, move_to(50.0, 40.0), BOUNDS, cursor_at(50.0, 40.0));
+
+        assert!(matches!(status, canvas::event::Status::Captured));
+        match msg {
+            Some(KnobMessage::Changed(v)) => {
+                assert!(v > 0.5, "dragging up should increase value, got {v}");
+            }
+            None => panic!("expected a Changed message on drag"),
+        }
+    }
+
+    #[test]
+    fn drag_down_decreases_value() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+
+        canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 40.0));
+        let (_, msg) = canvas.update(&mut state, move_to(50.0, 60.0), BOUNDS, cursor_at(50.0, 60.0));
+
+        match msg {
+            Some(KnobMessage::Changed(v)) => {
+                assert!(v < 0.5, "dragging down should decrease value, got {v}");
+            }
+            None => panic!("expected Changed"),
+        }
+    }
+
+    #[test]
+    fn drag_without_press_ignored() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+        // No press first — just move
+        let (_, msg) = canvas.update(&mut state, move_to(50.0, 40.0), BOUNDS, cursor_at(50.0, 40.0));
+        assert!(msg.is_none());
+    }
+
+    #[test]
+    fn release_stops_dragging() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+
+        canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 50.0));
+        assert!(state.dragging);
+
+        canvas.update(&mut state, release_left(), BOUNDS, cursor_at(50.0, 50.0));
+        assert!(!state.dragging);
+    }
+
+    #[test]
+    fn value_clamps_to_range() {
+        // Start at the top of range, drag up hard — should clamp to 1.0.
+        let canvas = KnobCanvas { value: 0.95 };
+        let mut state = KnobInteraction::default();
+
+        canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 90.0));
+        let (_, msg) = canvas.update(&mut state, move_to(50.0, 10.0), BOUNDS, cursor_at(50.0, 10.0));
+
+        if let Some(KnobMessage::Changed(v)) = msg {
+            assert!((0.0..=1.0).contains(&v), "value must stay in [0, 1], got {v}");
+        }
+    }
+
+    #[test]
+    fn mouse_interaction_changes_with_state() {
+        let canvas = KnobCanvas { value: 0.5 };
+        let mut state = KnobInteraction::default();
+
+        // Not dragging, not over bounds → default
+        let i = canvas.mouse_interaction(&state, BOUNDS, cursor_at(200.0, 200.0));
+        assert!(matches!(i, mouse::Interaction::None | mouse::Interaction::Idle));
+
+        // Not dragging, over bounds → Grab
+        let i = canvas.mouse_interaction(&state, BOUNDS, cursor_at(50.0, 50.0));
+        assert!(matches!(i, mouse::Interaction::Grab));
+
+        // Dragging → Grabbing
+        state.dragging = true;
+        let i = canvas.mouse_interaction(&state, BOUNDS, cursor_at(50.0, 50.0));
+        assert!(matches!(i, mouse::Interaction::Grabbing));
+    }
+}

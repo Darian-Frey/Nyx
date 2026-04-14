@@ -1,32 +1,75 @@
-// Re-export core types
+//! Nyx prelude — one-line import for sketches and apps.
+//!
+//! `use nyx_prelude::*;` gives you the Signal trait, combinators, oscillators,
+//! filters, dynamics, the clock, envelopes, notes, scales, chords, patterns,
+//! instruments, and everything else needed to sketch audio.
+
+// ─── nyx-core: types ─────────────────────────────────────────────────
 pub use nyx_core::{
     AudioContext, Param, Signal, SignalExt, VoicePool,
     Add, Amp, Clip, Mix, Mul, Offset, Pan, SoftClip,
+    Biquad, FilterExt, FilterMode,
+    Gain, PeakLimiter,
+    Scope, ScopeExt, ScopeHandle,
+    Inspect, InspectExt,
+    FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn,
     render_to_buffer,
 };
 pub use nyx_core::param::{ConstSignal, IntoParam};
+
+// ─── nyx-core: modules (for `osc::sine`, etc.) ───────────────────────
+pub use nyx_core::osc;
+pub use nyx_core::filter;
+pub use nyx_core::dynamics;
 pub use nyx_core::golden;
 
-// Re-export bridge
+// ─── nyx-core: bridge / alloc guard / hotswap ────────────────────────
 pub use nyx_core::{bridge, AudioCommand, BridgeReceiver, BridgeSender};
-
-// Re-export alloc guard
 pub use nyx_core::{DenyAllocGuard, GuardedAllocator};
+pub use nyx_core::hotswap;
 
-// Re-export engine (audio feature only)
+// ─── nyx-core: MIDI / OSC / mic (types are always exported) ──────────
+pub use nyx_core::midi;
+pub use nyx_core::osc_input;
+pub use nyx_core::{CcMap, CcSignal, CcWriter, MidiEvent, MidiReceiver, MidiSender};
+
+// ─── nyx-core: engine (audio feature only) ───────────────────────────
 #[cfg(feature = "audio")]
 pub use nyx_core::{Engine, EngineConfig, EngineError};
+#[cfg(feature = "audio")]
+pub use nyx_core::mic;
+
+// ─── nyx-seq: types ──────────────────────────────────────────────────
+pub use nyx_seq::{
+    Clock, ClockState,
+    Adsr, Stage,
+    Automation, AutomationExt, Follow,
+    Note,
+    Scale, ScaleMode,
+    Chord, ChordType,
+    Pattern,
+    Euclid,
+    Rng,
+    Sequence, StepEvent,
+    SubSynth, SynthPatch, OscShape, FilterType, PatchError,
+};
+
+// ─── nyx-seq: modules (for `clock::clock`, `automation::automation`, etc.) ─
+pub use nyx_seq::clock;
+pub use nyx_seq::envelope;
+pub use nyx_seq::automation;
+pub use nyx_seq::inst;
+pub use nyx_seq::{seeded};
 
 /// Start playing a signal on the default audio output device.
 ///
 /// Blocks the current thread until the user presses Enter.
-/// This is the quickest way to hear a signal:
 ///
 /// ```ignore
 /// use nyx_prelude::*;
 ///
 /// fn main() {
-///     play(|_ctx: &AudioContext| 0.0); // silence
+///     play(osc::sine(440.0).amp(0.3)).unwrap();
 /// }
 /// ```
 #[cfg(feature = "audio")]

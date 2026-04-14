@@ -1,0 +1,34 @@
+[package]
+name = "nyx-examples"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# This crate exists only to host examples with heavyweight dependencies
+# (nannou, bevy). The library itself is intentionally empty.
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+nyx-prelude = { path = "../nyx-prelude" }
+
+[dev-dependencies]
+nannou = "0.19"
+bevy = { version = "0.14", default-features = false, features = [
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_winit",
+    "x11",
+    "wayland",
+] }
+
+[[example]]
+name = "nannou_scope"
+path = "examples/nannou_scope.rs"
+
+[[example]]
+name = "bevy_spectrum"
+path = "examples/bevy_spectrum.rs"

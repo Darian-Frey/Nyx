@@ -240,22 +240,24 @@ polish work.
 
 ### Deferred from Earlier Phases
 
-- [ ] **Cookbook examples** — each phase was supposed to ship with 2 cookbook
-      examples in `examples/cookbook/` (≤ 20 lines each, real musical result).
-      Target list:
-  - [ ] `dubstep_wobble.rs` — LFO on filter cutoff, BPM-synced
-  - [ ] `wind.rs` — pink noise + slow random LFO on gain
-  - [ ] `generative_melody.rs` — Euclidean rhythm + scale snap + seeded RNG
-  - [ ] `nannou_scope.rs` — waveform visualiser in Nannou
-  - [ ] `midi_filter.rs` — MIDI CC mapped to filter cutoff
-- [ ] **Nannou oscilloscope example** (Phase 6 deferred item)
-- [ ] **Bevy spectrum visualiser example** (Phase 6 deferred item)
+- [x] **Cookbook examples** — runnable examples in `nyx-prelude/examples/`,
+      each using `use nyx_prelude::*;` for one-line imports.
+  - [x] `dubstep_wobble.rs` — LFO on filter cutoff
+  - [x] `wind.rs` — pink noise + slow random LFO on gain
+  - [x] `generative_melody.rs` — Euclidean rhythm + scale snap + seeded RNG
+  - [x] `midi_filter.rs` — MIDI CC mapped to filter cutoff (requires `midi` feature)
+  - [ ] `nannou_scope.rs` — waveform visualiser in Nannou (deferred — needs nannou dep)
+- [x] **Nannou oscilloscope example** — `nyx-examples/examples/nannou_scope.rs`
+- [x] **Bevy spectrum visualiser example** — `nyx-examples/examples/bevy_spectrum.rs`
+  - Both live in a dedicated `nyx-examples` crate excluded from
+    `default-members` so `cargo build` / `test` / `clippy` stay fast.
+  - Run with `cargo run -p nyx-examples --example <name> --release`.
 - [ ] **DAW bridge via JACK/PipeWire** (Phase 11 stretch goal)
 
 ### Polish & Infrastructure
 
-- [ ] **License files** — add `LICENSE-MIT` and `LICENSE-APACHE` to the repo
-      root (currently referenced in Cargo.toml but files missing).
+- [x] **License files** — `LICENSE-MIT` and `LICENSE-APACHE` added to repo
+      root; all crates inherit `license.workspace = true`.
 - [ ] **CI pipeline** — GitHub Actions workflow running:
   - `cargo build --workspace`
   - `cargo test --workspace`
@@ -267,9 +269,10 @@ polish work.
 - [ ] **`nyx-prelude` completeness** — re-export all Phase 4–11 types from
       `nyx-seq` (Clock, Adsr, Note, Scale, Chord, Pattern, Euclid, Rng,
       Sequence, SubSynth, etc.) so users get everything with one import.
-- [ ] **Widget interaction tests** — the Phase 10 mouse wiring works but has
-      no automated tests. Add tests that drive `canvas::Program::update()`
-      with synthetic events and verify state changes.
+- [x] **Widget interaction tests** — 25 inline unit tests across
+      [knob.rs](nyx-iced/src/knob.rs), [slider.rs](nyx-iced/src/slider.rs),
+      and [xypad.rs](nyx-iced/src/xypad.rs) drive `canvas::Program::update()`
+      with synthetic mouse events and verify state changes.
 - [ ] **Documentation** — update `docs/manual.md` whenever new public APIs
       are added. Keep examples in sync with actual method signatures.
 - [ ] **Examples/sketches directory** — expand `examples/sketches/` with
@@ -277,7 +280,12 @@ polish work.
 
 ### Future (v2.0)
 
-- [ ] WASM target (explicitly deferred to v2.0)
+- [ ] **DAW bridge** (JACK/PipeWire integration) — see
+      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
+      detailed phased plan (A0–A5).
+- [ ] **WASM target** — see
+      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
+      detailed phased plan (B0–B6).
 - [ ] Multi-channel (surround) output support beyond stereo
 
 ---

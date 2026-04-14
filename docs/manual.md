@@ -11,29 +11,34 @@ API, without managing buffers, thread safety, or DSP boilerplate.
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Core Concepts](#core-concepts)
-3. [Oscillators & Noise](#oscillators--noise)
-4. [Signal Combinators](#signal-combinators)
-5. [Filters](#filters)
-6. [Dynamics](#dynamics)
-7. [Clock & Timing](#clock--timing)
-8. [Envelopes](#envelopes)
-9. [Automation](#automation)
-10. [Music Theory](#music-theory)
-11. [Patterns & Sequencing](#patterns--sequencing)
-12. [Euclidean Rhythms](#euclidean-rhythms)
-13. [Randomness](#randomness)
-14. [Instruments](#instruments)
-15. [SubSynth & Patches](#subsynth--patches)
-16. [Visual Mirror (Scope & Spectrum)](#visual-mirror)
-17. [MIDI Input](#midi-input)
-18. [OSC Input](#osc-input)
-19. [Microphone Input](#microphone-input)
-20. [GUI Widgets (nyx-iced)](#gui-widgets)
-21. [Hot Reload (nyx-cli)](#hot-reload)
-22. [Testing Utilities](#testing-utilities)
-23. [Real-Time Safety](#real-time-safety)
-24. [API Reference](#api-reference)
+2. [The Prelude](#the-prelude)
+3. [Core Concepts](#core-concepts)
+4. [Oscillators & Noise](#oscillators--noise)
+5. [Signal Combinators](#signal-combinators)
+6. [Filters](#filters)
+7. [Dynamics](#dynamics)
+8. [Clock & Timing](#clock--timing)
+9. [Envelopes](#envelopes)
+10. [Automation](#automation)
+11. [Music Theory](#music-theory)
+12. [Patterns & Sequencing](#patterns--sequencing)
+13. [Euclidean Rhythms](#euclidean-rhythms)
+14. [Randomness](#randomness)
+15. [Instruments](#instruments)
+16. [SubSynth & Patches](#subsynth--patches)
+17. [Visual Mirror (Scope & Spectrum)](#visual-mirror)
+18. [MIDI Input](#midi-input)
+19. [OSC Input](#osc-input)
+20. [Microphone Input](#microphone-input)
+21. [GUI Widgets (nyx-iced)](#gui-widgets)
+22. [Hot Reload (nyx-cli)](#hot-reload)
+23. [Cookbook Examples](#cookbook-examples)
+24. [Nannou & Bevy Visualisers](#nannou--bevy-visualisers)
+25. [Testing Utilities](#testing-utilities)
+26. [Real-Time Safety](#real-time-safety)
+27. [API Reference](#api-reference)
+28. [Roadmap](#roadmap)
+29. [License](#license)
 
 ---
 
@@ -70,6 +75,104 @@ fn main() {
     // Audio stops when _engine is dropped.
 }
 ```
+
+---
+
+## The Prelude
+
+`use nyx_prelude::*;` is the recommended import for sketches and apps. It
+re-exports everything you typically need from `nyx-core` and `nyx-seq` in one
+line.
+
+### Modules
+
+You get these modules as bare names (no need for `nyx_core::` or `nyx_seq::`
+prefixes):
+
+| Module | Contents |
+|---|---|
+| `osc` | Oscillators: `osc::sine`, `osc::saw`, `osc::square`, `osc::triangle`, `osc::noise` |
+| `filter` | `FilterExt` trait and biquad types |
+| `dynamics` | `gain()`, `peak_limiter()` |
+| `clock` | `clock::clock(bpm)` constructor |
+| `envelope` | `envelope::adsr(a, d, s, r)` constructor |
+| `automation` | `automation::automation(\|t\| ...)` |
+| `inst` | Drum and instrument primitives: `inst::kick()`, `inst::snare()`, etc. |
+| `midi` | MIDI event types and parsing (feature-gated) |
+| `osc_input` | OSC parameter store (feature-gated) |
+| `mic` | Microphone input (audio feature) |
+| `golden` | Golden-file testing framework |
+| `hotswap` | `HotSwap` crossfade engine |
+
+### Traits & Types
+
+These are brought into scope directly:
+
+- **Signal core:** `Signal`, `SignalExt`, `Param`, `IntoParam`, `ConstSignal`,
+  `AudioContext`, `VoicePool`
+- **Combinators (structs):** `Amp`, `Add`, `Mul`, `Mix`, `Pan`, `Clip`,
+  `SoftClip`, `Offset`
+- **Filters:** `FilterExt`, `Biquad`, `FilterMode`
+- **Dynamics:** `Gain`, `PeakLimiter`
+- **Scope/Spectrum:** `ScopeExt`, `Scope`, `ScopeHandle`, `InspectExt`,
+  `Inspect`, `SpectrumExt`, `Spectrum`, `SpectrumConfig`, `SpectrumHandle`,
+  `WindowFn`, `FreqBin`
+- **Engine (audio feature):** `Engine`, `EngineConfig`, `EngineError`
+- **Bridge / safety:** `bridge`, `AudioCommand`, `DenyAllocGuard`,
+  `GuardedAllocator`
+- **Clock / envelope / automation:** `Clock`, `ClockState`, `Adsr`, `Stage`,
+  `Automation`, `AutomationExt`, `Follow`
+- **Music theory:** `Note`, `Scale`, `ScaleMode`, `Chord`, `ChordType`
+- **Patterns & sequencing:** `Pattern`, `Euclid`, `Rng`, `seeded`, `Sequence`,
+  `StepEvent`
+- **Synth:** `SubSynth`, `SynthPatch`, `OscShape`, `FilterType`, `PatchError`
+
+### Functions
+
+- `play(signal)` — blocking playback (waits for Enter)
+- `play_async(signal)` — non-blocking, returns the `Engine` handle
+- `render_to_buffer(signal, secs, sr)` — offline rendering
+
+### Example — everything with one import
+
+```rust
+use nyx_prelude::*;
+
+fn main() {
+    // Musical: use scale and chord types
+    let scale = Scale::major("C");
+    let chord = Chord::major(Note::C4);
+
+    // Clock + sequencer
+    let mut clk = clock::clock(120.0);
+    let pattern = Euclid::generate(3, 8);
+    let mut seq = Sequence::new(pattern, 0.25);
+
+    // Oscillator chain
+    let lfo = osc::sine(0.5).amp(400.0).offset(800.0);
+    let signal = osc::saw(220.0)
+        .lowpass(lfo, 0.707)
+        .amp(0.3);
+
+    play(signal).unwrap();
+}
+```
+
+### Sketch files for hot reload
+
+Sketches loaded by `nyx-cli` use the same prelude:
+
+```rust
+use nyx_prelude::*;
+
+#[unsafe(no_mangle)]
+pub fn nyx_sketch() -> Box<dyn Signal> {
+    osc::sine(440.0).amp(0.3).boxed()
+}
+```
+
+If you prefer explicit imports, you can still reach into the underlying
+crates directly: `use nyx_core::osc;` and `use nyx_seq::inst;` etc.
 
 ---
 
@@ -754,17 +857,47 @@ to the new signal chain.
 
 ### Writing a Sketch
 
+A sketch is a single `.rs` file that exports a `nyx_sketch()` function. Use the
+prelude for the shortest possible imports:
+
 ```rust
 // examples/sketches/my_sketch.rs
-use nyx_core::osc;
-use nyx_core::SignalExt;
-use nyx_core::Signal;
+use nyx_prelude::*;
 
 #[unsafe(no_mangle)]
 pub fn nyx_sketch() -> Box<dyn Signal> {
     osc::sine(440.0).amp(0.3).boxed()
 }
 ```
+
+A richer example with drums, sequencing, and time-based automation:
+
+```rust
+use nyx_prelude::*;
+
+#[unsafe(no_mangle)]
+pub fn nyx_sketch() -> Box<dyn Signal> {
+    let mut clk = clock::clock(140.0);
+    let mut kick = inst::kick();
+
+    let cutoff = automation::automation(|t| 200.0 + 800.0 * (t * 0.5).sin().abs());
+    let bass = osc::saw(55.0).lowpass(cutoff, 2.0).soft_clip(1.5);
+
+    let kick_pat = Euclid::generate(4, 16);
+    let mut seq = Sequence::new(kick_pat, 0.25);
+
+    let mut bass = bass;
+    (move |ctx: &AudioContext| {
+        let state = clk.tick(ctx);
+        let event = seq.tick(&state);
+        if event.triggered && event.value { kick.trigger(); }
+        bass.next(ctx) * 0.4 + kick.next(ctx)
+    }).boxed()
+}
+```
+
+Sketches may freely use any type from `nyx-core` or `nyx-seq` — the prelude
+re-exports everything commonly needed.
 
 ### Running
 
@@ -786,6 +919,82 @@ Options:
   --sample-rate N     Sample rate in Hz (default: 44100)
   --buffer-size N     Buffer size in samples (default: 512)
 ```
+
+---
+
+## Cookbook Examples
+
+Short, runnable examples living in [`nyx-prelude/examples/`](../nyx-prelude/examples/).
+Each uses `use nyx_prelude::*;` and calls `play()` — the point is to show
+how little code it takes to get a real musical result.
+
+| Example | What it does | Run |
+|---|---|---|
+| [`dubstep_wobble.rs`](../nyx-prelude/examples/dubstep_wobble.rs) | LFO-modulated filter cutoff on a detuned saw bass with soft clipping | `cargo run -p nyx-prelude --example dubstep_wobble --release` |
+| [`wind.rs`](../nyx-prelude/examples/wind.rs) | Pink noise lowpassed and shaped by a slow gain LFO | `cargo run -p nyx-prelude --example wind --release` |
+| [`generative_melody.rs`](../nyx-prelude/examples/generative_melody.rs) | Euclidean rhythm triggers seeded-random notes from A pentatonic through a `SubSynth` | `cargo run -p nyx-prelude --example generative_melody --release` |
+| [`midi_filter.rs`](../nyx-prelude/examples/midi_filter.rs) | MIDI CC1 sweeps filter cutoff from 100 Hz to 8 kHz (exponential, 5 ms smoothed) | `cargo run -p nyx-prelude --example midi_filter --features midi --release` |
+
+**Why release mode?** Debug builds of cpal + DSP are ~20× slower than
+release. Always use `--release` for anything that produces audio.
+
+---
+
+## Nannou & Bevy Visualisers
+
+Heavier examples that integrate with external creative-coding frameworks
+live in a dedicated [`nyx-examples`](../nyx-examples/) crate. This crate is
+**excluded from the default workspace build** so `cargo build`, `cargo
+test`, and `cargo clippy` on the main workspace stay fast.
+
+| Example | Framework | What it does |
+|---|---|---|
+| [`nannou_scope.rs`](../nyx-examples/examples/nannou_scope.rs) | Nannou | Live oscilloscope with a sliding-window waveform buffer |
+| [`bevy_spectrum.rs`](../nyx-examples/examples/bevy_spectrum.rs) | Bevy | 64-bar FFT spectrum driven by a frequency sweep, rendered as ECS sprite entities |
+
+### Running
+
+```bash
+cargo run -p nyx-examples --example nannou_scope --release
+cargo run -p nyx-examples --example bevy_spectrum --release
+```
+
+First build of `nyx-examples` takes ~40 seconds (compiles Nannou + Bevy
+trees). Subsequent rebuilds are ~1–2 seconds.
+
+### How the bug-free sliding scope works
+
+The `ScopeHandle::read()` method only fills as many samples as are
+available. At ~60 fps with 44.1 kHz audio, only ~735 samples arrive between
+frames, but a 2048-sample display buffer needs the rest to be *previous*
+samples, not zeros. The Nannou example demonstrates the correct pattern:
+
+```rust
+let n = scope.read(&mut scratch);
+let buf_len = buffer.len();
+if n >= buf_len {
+    buffer.copy_from_slice(&scratch[n - buf_len..n]);
+} else {
+    buffer.rotate_left(n);
+    buffer[buf_len - n..].copy_from_slice(&scratch[..n]);
+}
+```
+
+Use this pattern in your own scope-consuming code.
+
+### Proportional bar grouping for spectra
+
+When mapping `N` FFT bins to `M` display bars and `N` isn't divisible by
+`M`, naive integer division drops bins. Use proportional integer math to
+distribute the remainder evenly:
+
+```rust
+let start = (bar_index * total_bins) / BAR_COUNT;
+let end   = ((bar_index + 1) * total_bins) / BAR_COUNT;
+```
+
+Both visualisers use this pattern so the highest frequencies are always
+represented.
 
 ---
 
@@ -836,6 +1045,61 @@ fn my_signal_is_alloc_free() {
 }
 ```
 
+### Widget Interaction Tests
+
+The iced canvas widgets each include inline unit tests that drive
+`canvas::Program::update()` with synthetic mouse events and assert on
+state changes. Pattern:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use iced::widget::canvas::Program;
+
+    fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
+        mouse::Cursor::Available(Point::new(x, y))
+    }
+
+    fn press() -> Event {
+        Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left))
+    }
+
+    #[test]
+    fn click_updates_value() {
+        let canvas = HSliderCanvas { value: 0.0 };
+        let mut state = SliderInteraction::default();
+        let bounds = Rectangle { x: 0.0, y: 0.0, width: 200.0, height: 24.0 };
+        let (_, msg) = canvas.update(&mut state, press(), bounds, cursor_at(100.0, 12.0));
+        assert!(matches!(msg, Some(SliderMessage::Changed(v)) if (v - 0.5).abs() < 0.02));
+    }
+}
+```
+
+All four widgets (Knob, HSlider, VSlider, XYPad) ship with this coverage
+— 25 tests total across [knob.rs](../nyx-iced/src/knob.rs),
+[slider.rs](../nyx-iced/src/slider.rs), and
+[xypad.rs](../nyx-iced/src/xypad.rs).
+
+### Running the Test Suite
+
+```bash
+# Full native test suite — excludes nyx-examples (nannou/bevy heavy deps)
+cargo test
+
+# Just widget tests
+cargo test -p nyx-iced --lib
+
+# Specific phase
+cargo test -p nyx-core --test phase3
+
+# With clippy (default members only — stays fast)
+cargo clippy -- -D warnings
+```
+
+**Current status:** 254 tests passing across `nyx-core`, `nyx-seq`,
+`nyx-iced`, and `nyx-prelude`.
+
 ---
 
 ## Real-Time Safety
@@ -860,13 +1124,20 @@ Communication between threads uses:
 
 ### Crate Overview
 
-| Crate | Purpose |
-|---|---|
-| `nyx-core` | Signal engine, oscillators, filters, dynamics, scope, spectrum, MIDI, OSC, mic |
-| `nyx-seq` | Clock, envelopes, automation, notes, scales, chords, patterns, sequencer, instruments, SubSynth |
-| `nyx-iced` | Iced GUI widgets (knob, sliders, XY pad, oscilloscope, spectrum) |
-| `nyx-prelude` | Convenience re-exports for one-line imports |
-| `nyx-cli` | Hot-reload sketch player |
+| Crate | Purpose | In default workspace |
+|---|---|---|
+| `nyx-core` | Signal engine, oscillators, filters, dynamics, scope, spectrum, MIDI, OSC, mic, hotswap | Yes |
+| `nyx-seq` | Clock, envelopes, automation, notes, scales, chords, patterns, sequencer, instruments, SubSynth | Yes |
+| `nyx-iced` | Iced GUI widgets (knob, sliders, XY pad, oscilloscope, spectrum) | Yes |
+| `nyx-prelude` | Convenience re-exports + cookbook examples | Yes |
+| `nyx-cli` | Hot-reload sketch player | Yes |
+| `nyx-examples` | Nannou & Bevy visualisers (heavy deps isolated here) | No — excluded from `default-members` |
+
+The root `Cargo.toml` lists `nyx-examples` as a workspace member but
+excludes it from `default-members`, so `cargo build`, `cargo test`, and
+`cargo clippy` run fast on the core crates without compiling Nannou or
+Bevy. Target `nyx-examples` explicitly (`cargo run -p nyx-examples
+--example <name>`) to build those.
 
 ### Feature Flags (nyx-core)
 
@@ -900,3 +1171,52 @@ Communication between threads uses:
 | `iced` | 0.13 | GUI framework |
 | `notify` | 7 | File watching |
 | `libloading` | 0.8 | Dynamic library loading |
+| `nannou` | 0.19 | Creative-coding visualiser (nyx-examples) |
+| `bevy` | 0.14 | ECS game engine visualiser (nyx-examples) |
+
+---
+
+## Roadmap
+
+All 11 original phases of the project are complete. Remaining work is
+tracked in [CLAUDE.md](../CLAUDE.md) (source of truth for the project
+status) and two longer planning docs:
+
+- **[CLAUDE.md — Post-Phase-11 Backlog](../CLAUDE.md)** — the master
+  status board. Completed items are checked off; remaining small-polish
+  work (e.g. CI pipeline, more sketches) lives here.
+- **[docs/roadmap-deferred.md](roadmap-deferred.md)** — detailed phased
+  plans for the two large deferred features:
+  - **A. DAW Bridge** (JACK/PipeWire integration, phases A0–A5)
+  - **B. WASM Target** (browser support, phases B0–B6)
+
+Both documents include explicit deliverables, test strategies, API
+sketches, and a recommended order of attack. Start there when resuming
+work on either feature.
+
+### Recently Completed
+
+- [x] License files (MIT + Apache 2.0) with `license.workspace = true`
+      on all crates
+- [x] Cookbook examples (4 runnable sketches in `nyx-prelude/examples/`)
+- [x] Widget interaction tests (25 tests across knob/slider/xypad)
+- [x] Nannou oscilloscope + Bevy spectrum visualisers in `nyx-examples/`
+- [x] Expanded `nyx-prelude` to re-export all nyx-seq modules for
+      one-line imports in sketches
+- [x] Detailed deferred roadmap document
+
+---
+
+## License
+
+Nyx is dual-licensed under:
+
+- [MIT License](../LICENSE-MIT)
+- [Apache License 2.0](../LICENSE-APACHE)
+
+You may use this software under the terms of **either** license, at your
+option. All crates in the workspace inherit `license = "MIT OR Apache-2.0"`
+from the root `Cargo.toml`.
+
+When contributing, you agree that your contributions will be dual-licensed
+under the same terms.

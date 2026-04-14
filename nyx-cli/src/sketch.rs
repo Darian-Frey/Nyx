@@ -62,7 +62,9 @@ crate-type = ["cdylib"]
 [dependencies]
 nyx-core = {{ path = "{}/nyx-core", default-features = false }}
 nyx-seq = {{ path = "{}/nyx-seq" }}
+nyx-prelude = {{ path = "{}/nyx-prelude", default-features = false }}
 "#,
+        workspace_root.display(),
         workspace_root.display(),
         workspace_root.display(),
     );

@@ -5,6 +5,18 @@ members = [
     "nyx-iced",
     "nyx-cli",
     "nyx-prelude",
+    "nyx-examples",
+]
+# Keep heavy visualisers (nannou, bevy) out of the default build so
+# `cargo build`, `cargo test`, and `cargo clippy` stay fast. To build
+# an example from nyx-examples, target it explicitly:
+#     cargo run -p nyx-examples --example nannou_scope --release
+default-members = [
+    "nyx-core",
+    "nyx-seq",
+    "nyx-iced",
+    "nyx-cli",
+    "nyx-prelude",
 ]
 resolver = "2"
 
