@@ -1,4 +1,6 @@
-use crate::param::{IntoParam, Param};
+use crate::crush::{BitCrush, Downsample};
+use crate::delay::{new_delay, Delay};
+use crate::param::{ConstSignal, IntoParam, Param};
 
 /// Per-sample context passed to every `Signal::next` call.
 ///
@@ -118,6 +120,63 @@ pub trait SignalExt: Signal + Sized {
             source: self,
             value,
         }
+    }
+
+    /// Quantise this signal to a reduced bit depth.
+    ///
+    /// Produces a digital "crushed" sound. `bits` is clamped to `[1, 24]`.
+    /// `1` gives a harsh square-wave-like output, `4` gives classic 80s
+    /// sampler grit, `16` is effectively transparent.
+    ///
+    /// ```ignore
+    /// osc::sine(440.0).bitcrush(4)
+    /// ```
+    fn bitcrush(self, bits: u32) -> BitCrush<Self> {
+        BitCrush::new(self, bits)
+    }
+
+    /// Reduce the effective sample rate by sample-and-hold.
+    ///
+    /// `ratio` ∈ `(0, 1]`: `1.0` is identity, `0.5` halves the rate,
+    /// `0.25` quarters it. Values outside this range are clamped.
+    ///
+    /// ```ignore
+    /// osc::saw(220.0).downsample(0.25)  // 11 kHz effective rate
+    /// ```
+    fn downsample(self, ratio: f32) -> Downsample<Self> {
+        Downsample::new(self, ratio)
+    }
+
+    /// Convenience: bitcrush then downsample in one chain.
+    ///
+    /// Equivalent to `self.bitcrush(bits).downsample(ratio)`. Together
+    /// these two effects produce the full lo-fi / glitch character —
+    /// bit-depth reduction for grit, sample-rate reduction for aliasing.
+    ///
+    /// ```ignore
+    /// osc::saw(110.0).crush(6, 0.5)
+    /// ```
+    fn crush(self, bits: u32, ratio: f32) -> Downsample<BitCrush<Self>> {
+        self.bitcrush(bits).downsample(ratio)
+    }
+
+    /// Wrap this signal in a delay line with configurable feedback and
+    /// wet/dry mix.
+    ///
+    /// Returns a [`Delay`] whose builder methods (`.time()`, `.feedback()`,
+    /// `.mix()`) configure the effect. Feedback is internally clamped to
+    /// `[0.0, 0.95]`. The initial `time_secs` also sets the maximum
+    /// buffer length; call `.max_time()` on the returned delay if you
+    /// plan to modulate `time` higher.
+    ///
+    /// ```ignore
+    /// osc::saw(220.0)
+    ///     .delay(0.375)      // 375 ms echo
+    ///     .feedback(0.4)      // 40% feedback
+    ///     .mix(0.3)           // 30% wet
+    /// ```
+    fn delay(self, time_secs: f32) -> Delay<Self, ConstSignal, ConstSignal, ConstSignal> {
+        new_delay(self, time_secs)
     }
 }
 

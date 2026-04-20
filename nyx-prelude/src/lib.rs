@@ -8,6 +8,10 @@
 pub use nyx_core::{
     AudioContext, Param, Signal, SignalExt, VoicePool,
     Add, Amp, Clip, Mix, Mul, Offset, Pan, SoftClip,
+    BitCrush, Downsample,
+    Delay,
+    pluck, Pluck,
+    Sample, SampleError, Sampler, SamplerMode,
     Biquad, FilterExt, FilterMode,
     Gain, PeakLimiter,
     Scope, ScopeExt, ScopeHandle,
@@ -38,6 +42,10 @@ pub use nyx_core::{CcMap, CcSignal, CcWriter, MidiEvent, MidiReceiver, MidiSende
 pub use nyx_core::{Engine, EngineConfig, EngineError};
 #[cfg(feature = "audio")]
 pub use nyx_core::mic;
+
+// ─── nyx-core: WAV export (wav feature) ──────────────────────────────
+#[cfg(feature = "wav")]
+pub use nyx_core::{render_to_wav, render_to_wav_f32, WavError};
 
 // ─── nyx-seq: types ──────────────────────────────────────────────────
 pub use nyx_seq::{

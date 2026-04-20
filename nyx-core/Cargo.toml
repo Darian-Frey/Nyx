@@ -5,10 +5,11 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["audio"]
+default = ["audio", "wav"]
 audio = ["dep:cpal"]
 midi = ["dep:midir"]
 osc = ["dep:rosc"]
+wav = ["dep:hound"]
 
 [dependencies]
 cpal = { version = "0.17", optional = true }
@@ -16,3 +17,8 @@ rtrb = "0.3"
 spectrum-analyzer = "1.6"
 midir = { version = "0.10", optional = true }
 rosc = { version = "0.10", optional = true }
+hound = { version = "3", optional = true }
+thiserror = "1"
+
+[dev-dependencies]
+hound = "3"

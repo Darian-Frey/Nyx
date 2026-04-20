@@ -340,6 +340,159 @@ signal.clip(0.8)        // hard clip to [-0.8, 0.8]
 signal.soft_clip(2.0)   // tanh(signal * 2.0)
 ```
 
+### Delay / Echo
+
+Single-buffer delay line with feedback and wet/dry mix. Foundation for
+chorus, flanger, ping-pong, Karplus-Strong, and comb filtering.
+
+```rust
+osc::saw(220.0)
+    .delay(0.375)    // 375 ms base delay
+    .feedback(0.4)   // 40% feedback (clamped to [0, 0.95] internally)
+    .mix(0.3)        // 30% wet
+```
+
+| Method | Parameter | Effect |
+| --- | --- | --- |
+| `.delay(time_secs: f32)` | seconds, sets max buffer size | Start the delay chain |
+| `.time(secs: impl IntoParam)` | static `f32` or `Signal` | Set/modulate delay time (smoothed ~5 ms) |
+| `.feedback(amount: impl IntoParam)` | clamped to `[0, 0.95]` | Recirculation amount; smoothed |
+| `.mix(wet: impl IntoParam)` | clamped to `[0, 1]` | 0 = dry, 1 = pure wet; smoothed |
+| `.max_time(secs: f32)` | reallocates buffer | Call before `play()` if you plan to modulate `time` beyond the initial value |
+
+**Key design choices:**
+
+- **Single allocation** at construction (main thread), `Box<[f32]>` sized
+  for the maximum requested delay at `DELAY_MAX_SR = 96_000` Hz. Zero
+  allocation per sample in the audio callback.
+- **Linear interpolation** on buffer reads — clean enough for typical
+  modulation rates (< 10 Hz). Hermite interpolation deferred to v1.2.
+- **All three parameters smoothed** by a ~5 ms one-pole filter to
+  prevent zipper noise when modulated.
+- **Feedback clamp** to `[0, 0.95]` prevents infinite gain even under
+  misuse (e.g. `feedback(2.0)` is silently bounded).
+
+### Sample Playback
+
+Load a WAV file once on the main thread, play it back through one or
+many `Sampler` voices. Audio data is shared via `Arc<[f32]>` — cloning
+a `Sample` is a refcount bump, not a copy.
+
+```rust
+use nyx_prelude::*;
+
+// From a file (requires `wav` feature, enabled by default)
+let kick = Sample::load("kick.wav")?;
+
+// Or from an in-memory buffer
+let buf = render_to_buffer(&mut inst::kick(), 0.4, 44100.0);
+let kick = Sample::from_buffer(buf, 44100.0)?;
+
+// Build a voice
+play(Sampler::new(kick).pitch(1.5)).unwrap();
+```
+
+**`Sample` API:**
+
+| Method | Description |
+| --- | --- |
+| `Sample::load(path)` | Load a WAV (16/24/32-bit int or 32-bit float). Stereo → mono downmix on load. Requires `wav` feature. |
+| `Sample::from_buffer(data, sr)` | Build from an in-memory mono f32 `Vec`. Always available. |
+| `.len()` / `.is_empty()` / `.duration_secs()` / `.sample_rate()` | Metadata |
+
+**`Sampler` API:**
+
+| Method | Description |
+| --- | --- |
+| `Sampler::new(sample)` | One-shot voice at native pitch |
+| `.pitch(rate: impl IntoParam)` | `1.0` = native, `2.0` = octave up. Accepts `f32` or `Signal` |
+| `.loop_all()` | Loop the whole sample |
+| `.loop_region(start_secs, end_secs)` | Loop a sub-region |
+| `.ping_pong()` | Bounce back and forth at loop bounds |
+| `.trigger()` | Reset position to start (for retriggering one-shots) |
+| `.is_finished()` | `true` when a one-shot has played out |
+| `.position()` | Current fractional sample index |
+
+**Sample-rate mismatch:** if the sample's native rate (say 44.1 kHz)
+differs from the stream rate (say 48 kHz), `Sampler` automatically
+scales the playback rate so `pitch(1.0)` always sounds at the sample's
+native pitch. No explicit resampling step is needed.
+
+**Lifetime caveat:** keep at least one `Sample` reference alive for as
+long as any `Sampler` cloned from it is playing. Otherwise the last
+`Arc::drop` may occur on the audio thread, triggering the allocator.
+(A "sample graveyard" that ships `Arc`s back to the main thread for
+drop is planned for Sprint 2.)
+
+### Karplus-Strong (Plucked String)
+
+The canonical DSP teaching example — a noise burst circulating through
+a delay line with a gentle one-pole lowpass in the feedback path. Delay
+length sets the pitch; the lowpass progressively loses high frequencies
+each pass, giving the characteristic plucked-string decay shape.
+
+```rust
+// A 440 Hz plucked string with long sustain
+play(pluck(440.0, 0.996)).unwrap();
+
+// Stack for a chord
+let chord = pluck(Note::C4.to_freq(), 0.996)
+    .add(pluck(Note::E4.to_freq(), 0.996))
+    .add(pluck(Note::G4.to_freq(), 0.996))
+    .amp(0.3);
+```
+
+| Parameter | Range | Effect |
+| --- | --- | --- |
+| `freq` | Hz, clamped ≥ 20 Hz | Pitch of the plucked note |
+| `decay` | `[0, 1]` | Feedback gain. `0.99` = long sustain, `0.9` = short, `0` = instant silence |
+
+**Single-shot behaviour:** each `Pluck` strikes once at first `.next()`
+call (when we know the real sample rate) and rings out from there.
+Dropping the `Pluck` ends the note. For repeated strikes, build a fresh
+`Pluck` per note-on event.
+
+**Why a dedicated function?** `pluck()` could be built by hand from
+`osc::noise::white() + .delay() + .lowpass()`, but:
+
+- The `sample_rate / freq` → delay-length conversion is a trap for
+  newcomers
+- It's the first example in every DSP textbook; its absence is surprising
+- `play(pluck(440.0, 0.99))` is a one-line library demo
+
+### Lo-fi / Glitch
+
+Bitcrusher and sample-rate reducer — the two halves of classic lo-fi
+character. Both are stateless (`BitCrush` holds nothing; `Downsample`
+holds one latched sample + a counter), so they're trivially real-time
+safe.
+
+```rust
+// Quantise to 4-bit depth for 80s sampler grit
+signal.bitcrush(4)
+
+// Sample-and-hold: each input held for 4 output samples (quarter rate)
+signal.downsample(0.25)
+
+// Both at once
+signal.crush(6, 0.5)  // 6-bit, half rate
+```
+
+| Method | Parameter | Effect |
+| --- | --- | --- |
+| `.bitcrush(bits: u32)` | `bits` in `[1, 24]`, clamped | `1` = harsh square-ish, `4–8` = classic crush, `16+` = transparent |
+| `.downsample(ratio: f32)` | `ratio` in `(0, 1]`, clamped | `1.0` = identity, `0.5` = each sample held twice, `0.25` = held four times |
+| `.crush(bits, ratio)` | convenience | shorthand for `.bitcrush(bits).downsample(ratio)` |
+
+**Character notes:**
+
+- At low bit depths, even DC (0.0) input doesn't quantise to 0.0 — there
+  isn't an output level at zero. That's expected; it's part of the grit.
+- Upstream oscillators continue running at the full sample rate (their
+  phase accumulators advance per frame). `.downsample()` is a
+  sample-and-hold on the emitted value, not true decimation — the
+  resulting aliasing is what gives the effect its crunch.
+
 ---
 
 ## Clock & Timing
@@ -541,6 +694,41 @@ if event.triggered && event.value {
 
 Works with any type — bools for triggers, `Note` for melodies, `f32` for
 parameter automation.
+
+#### Probability & Conditional Modifiers
+
+TidalCycles-style modifiers layer on top of any `Sequence<T>`. All use
+a seeded PRNG, so `.seed(n)` makes output reproducible across runs.
+
+```rust
+let seq = Sequence::new(pattern, 0.25)
+    .prob(0.75)                         // 75% of hits fire
+    .seed(42)
+    .every(4, |p| p.reverse())          // every 4 cycles, reverse
+    .sometimes(0.3, |p| p.rotate(2));   // 30% of cycles, rotate by 2
+```
+
+| Method | Behaviour |
+| --- | --- |
+| `.prob(p: f32)` | Each step has `p` probability of firing. `1.0` = all fire, `0.0` = silent. |
+| `.degrade(amount: f32)` | TidalCycles alias: `.degrade(0.25)` == `.prob(0.75)`. |
+| `.every(n, \|p\| ...)` | Every `n`-th cycle, use the transformed pattern. Returns to base after. |
+| `.sometimes(p, \|p\| ...)` | Per-cycle coin flip at probability `p` picks between base and transformed. |
+| `.seed(seed: u64)` | Set the PRNG seed. Same seed → identical output. |
+
+Pattern transformations usable inside `.every()` / `.sometimes()`:
+
+- `p.reverse()` — reverse the step order
+- `p.rotate(n: i32)` — rotate right by `n` steps (negative = left)
+- `p.shuffle(seed: u64)` — Fisher-Yates random permutation
+- `p.retrograde()` — alias for `.reverse()`
+
+Only the most recent `.every()` or `.sometimes()` call is active; for
+composition, combine inside a single closure:
+
+```rust
+seq.sometimes(0.5, |p| p.rotate(2).reverse())
+```
 
 ---
 
@@ -934,6 +1122,12 @@ how little code it takes to get a real musical result.
 | [`wind.rs`](../nyx-prelude/examples/wind.rs) | Pink noise lowpassed and shaped by a slow gain LFO | `cargo run -p nyx-prelude --example wind --release` |
 | [`generative_melody.rs`](../nyx-prelude/examples/generative_melody.rs) | Euclidean rhythm triggers seeded-random notes from A pentatonic through a `SubSynth` | `cargo run -p nyx-prelude --example generative_melody --release` |
 | [`midi_filter.rs`](../nyx-prelude/examples/midi_filter.rs) | MIDI CC1 sweeps filter cutoff from 100 Hz to 8 kHz (exponential, 5 ms smoothed) | `cargo run -p nyx-prelude --example midi_filter --features midi --release` |
+| [`wav_export.rs`](../nyx-prelude/examples/wav_export.rs) | Renders a 10-second filtered saw to `track.wav` (16-bit mono) | `cargo run -p nyx-prelude --example wav_export --release` |
+| [`lofi.rs`](../nyx-prelude/examples/lofi.rs) | Filtered saw crushed to 6-bit / quarter-rate for 80s sampler grit | `cargo run -p nyx-prelude --example lofi --release` |
+| [`echo.rs`](../nyx-prelude/examples/echo.rs) | Walking pluck bassline through a 750 ms delay with 50% feedback | `cargo run -p nyx-prelude --example echo --release` |
+| [`pluck.rs`](../nyx-prelude/examples/pluck.rs) | Four-voice Karplus-Strong Cm7 chord that rings out | `cargo run -p nyx-prelude --example pluck --release` |
+| [`sampler.rs`](../nyx-prelude/examples/sampler.rs) | Synthesised kick rendered into a buffer, retriggered on beats at shifting pitches | `cargo run -p nyx-prelude --example sampler --release` |
+| [`conditional.rs`](../nyx-prelude/examples/conditional.rs) | `.degrade()` kick on every beat + `.every(4, reverse)` on Euclidean hi-hats | `cargo run -p nyx-prelude --example conditional --release` |
 
 **Why release mode?** Debug builds of cpal + DSP are ~20× slower than
 release. Always use `--release` for anything that produces audio.
@@ -1002,6 +1196,8 @@ represented.
 
 ### Offline Rendering
 
+Render a signal to a `Vec<f32>` without audio hardware:
+
 ```rust
 use nyx_core::render_to_buffer;
 
@@ -1009,6 +1205,32 @@ let mut sig = osc::sine(440.0);
 let samples = render_to_buffer(&mut sig, 1.0, 44100.0);
 // Returns Vec<f32> with 44100 samples
 ```
+
+### WAV Export
+
+Render a signal directly to a `.wav` file on disk. Gated behind the
+`wav` feature (enabled by default).
+
+```rust
+use nyx_prelude::*;
+
+let signal = osc::saw(110.0).lowpass(800.0, 0.707).amp(0.3);
+render_to_wav(signal, 10.0, 44100.0, "track.wav")?;
+```
+
+| Function | Format | Use when |
+| --- | --- | --- |
+| `render_to_wav(signal, secs, sr, path)` | 16-bit signed PCM mono | Default choice — universal, matches DAW expectations, half the file size |
+| `render_to_wav_f32(signal, secs, sr, path)` | 32-bit float mono | Lossless preservation, values outside [-1, 1] are kept as-is |
+
+Both variants take the signal **by value** (consumed). The 16-bit
+version hard-clamps samples to `[-1, 1]` before quantising. Both reject
+non-positive durations and sample rates with `WavError::InvalidDuration`
+/ `WavError::InvalidSampleRate`.
+
+**Main thread only.** Never call from the audio callback — it allocates,
+blocks on I/O, and can take many seconds. Use it for offline composition
+rendering.
 
 ### Golden File Tests
 

@@ -5,10 +5,11 @@ edition.workspace = true
 license.workspace = true
 
 [features]
-default = ["audio"]
+default = ["audio", "wav"]
 audio = ["nyx-core/audio"]
 midi = ["nyx-core/midi"]
 osc = ["nyx-core/osc"]
+wav = ["nyx-core/wav"]
 
 [dependencies]
 nyx-core = { path = "../nyx-core", default-features = false }

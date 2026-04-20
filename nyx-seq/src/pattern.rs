@@ -97,6 +97,19 @@ impl<T: Clone> Pattern<T> {
         steps.extend_from_slice(&self.steps[..split]);
         Pattern { steps }
     }
+
+    /// Randomly permute the pattern using a Fisher-Yates shuffle with
+    /// a seeded PRNG. Same `seed` always produces the same permutation.
+    pub fn shuffle(&self, seed: u64) -> Self {
+        use crate::random::seeded;
+        let mut rng = seeded(seed);
+        let mut steps = self.steps.clone();
+        for i in (1..steps.len()).rev() {
+            let j = (rng.next_u64() as usize) % (i + 1);
+            steps.swap(i, j);
+        }
+        Pattern { steps }
+    }
 }
 
 /// Pattern of MIDI notes can be inverted (mirror around an axis).

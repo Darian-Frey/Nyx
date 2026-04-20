@@ -13,63 +13,199 @@ SuperCollider, TidalCycles, Sonic Pi, Max/MSP, Pure Data,
 
 ## Tier 1 — First Sprint (~1.5 weeks)
 
-Massive DX/UX wins for modest effort. Land these first.
+> **Implementation spec: [SPRINT_1_SPEC.md](SPRINT_1_SPEC.md)** — full
+> API signatures, error types, test strategies, and open questions.
+> That document supersedes the brief bullets here.
 
-### 1. Delay line with feedback (3–4 days) — HIGHEST VALUE
-Fixed-size circular buffer. Unlocks echo, slapback, ping-pong,
-Karplus-Strong, flanger, chorus, comb filtering in one primitive.
+Order chosen for momentum and risk management: start with half-day wins
+to build momentum, resolve the hardest design decision (delay API) mid-
+sprint, then use the settled delay to trivialize Karplus-Strong, then
+the largest item (Sampler), then pure additions (probability).
+
+### 1. WAV Export (½ day)
+
+`render_to_wav(signal, secs, sr, path)` wraps existing `render_to_buffer`
+with `hound`. 16-bit signed mono default. Behind `wav` feature.
+
+```rust
+nyx::render_to_wav(osc::sine(440.0), 5.0, 44100.0, "tone.wav")?;
+```
+
+### 2. Bitcrusher + Sample-Rate Reducer (½ day)
+
+Stateless math, confidence win before the harder items.
+
+```rust
+signal.bitcrush(8).downsample(0.25)
+signal.crush(8, 0.25)  // shorthand
+```
+
+Both are pure combinators. `bits: u32` for v1 (fractional deferred).
+`ratio: f32` in 0..1 (1.0 = identity, 0.5 = half rate).
+
+### 3. Delay Line + Feedback (3–4 days) — HIGHEST VALUE
+
+Foundation for chorus, flanger, reverb, ping-pong, Karplus-Strong.
+Getting the API right here pays back across the whole feature roadmap.
 
 ```rust
 osc::saw(220.0).delay(0.375).feedback(0.4).mix(0.3)
 ```
 
-- API: `Delay<S, const N: usize>` with `.feedback(f32)`, `.mix(wet)`
-- Pre-allocated buffer → trivially no-alloc
-- fundsp ships `delay()`, Tone.js has `FeedbackDelay`
+- **Uses `Box<[f32]>` (not const generic `N`)** — see architectural
+  notes below.
+- `.max_time()` builder for users who plan to modulate longer
+- Feedback internally clamped to `[0.0, 0.95]` (silent clamp, debug log)
+- Linear interpolation for v1 (Hermite deferred to v1.2)
+- Time, feedback, and mix all accept `IntoParam`
 
-### 2. WAV export / `render_to_wav` (1 day)
-`render_to_buffer` already exists — just wrap it in a file writer.
+### 4. Karplus-Strong `pluck()` (½ day)
 
-```rust
-nyx::render_to_wav(signal, 60.0, 44100.0, "track.wav")?;
-```
+Earns its own combinator despite being a delay+feedback+LP composition:
 
-- Add `hound = "3"` as optional feature dep
-- Unlocks offline rendering workflow for non-real-time users
-
-### 3. Sample playback (3–4 days)
-Load WAV on the main thread, play back from an `Arc<[f32]>` with
-variable-rate interpolation (linear or 4-point Hermite).
+- Canonical DSP teaching example
+- Frequency-to-delay-samples conversion is non-obvious
+- One-line demos sell the library
 
 ```rust
-Sampler::load("kick.wav")?.pitch(1.5).loop_region(0.0, 1.0)
+play(pluck(440.0, 0.98)).unwrap();
 ```
 
-- Pitch via playback rate
-- Loop points, one-shot mode
-- Enables drum machines beyond synthesised `inst::kick` etc.
-- Table-stakes for any beat-making audience
+### 5. Sampler (3–4 days)
 
-### 4. Probability & conditional steps in `Sequence` (1–2 days)
-TidalCycles/Elektron-style pattern modifiers.
+Largest item. Load WAV on main thread into `Arc<[f32]>`, play back with
+variable-rate linear interpolation. One-shot / Loop / PingPong modes.
 
 ```rust
-seq.prob(0.75)                    // drop 25% of hits randomly
-seq.every(4, |s| s.reverse())     // every 4 bars, reverse
+let kick = Sample::load("kick.wav")?;
+play(Sampler::new(kick).pitch(1.5)).unwrap();
 ```
 
-- Purely additive API on existing `Sequence<T>` / `Pattern<T>`
-- Huge creative-coder appeal for minimal code
+- **Requires the "sample graveyard" infrastructure** (see below) to
+  prevent audio-thread deallocation when the last `Arc` reference is
+  dropped in the callback.
+- Mono only in v1; stereo samples downmixed at load.
 
-### 5. Bitcrusher + sample-rate reducer (½ day)
-Bit depth quantisation + zero-order-hold downsampling.
+### 6. Probability & Conditional Steps (1–2 days)
+
+TidalCycles/Elektron-style modifiers on existing `Sequence<T>`.
 
 ```rust
-signal.bitcrush(8).downsample(0.25)
+seq.prob(0.75)                     // drop 25% of hits randomly
+seq.every(4, |s| s.reverse())       // every 4 bars, reverse
+seq.sometimes(0.3, |s| s.rotate(2)) // 30% chance per bar
+seq.degrade(0.25)                   // TidalCycles alias for .prob(0.75)
 ```
 
-- Stateless math, trivially RT-safe
-- Beloved lo-fi / glitch effect, ubiquitous expected feature
+Pattern gets `.shuffle(seed)` (Fisher-Yates). Sequence uses a seeded
+PRNG per-instance so live-diff reloads are reproducible.
+
+---
+
+## Project-Wide Architectural Notes
+
+Surfaced by the Sprint 1 spec. These decisions apply beyond Sprint 1 and
+should be treated as project-wide conventions.
+
+### `Box<[f32]>` over const generic `N` for fixed buffers
+
+For any effect that needs a pre-allocated buffer (delay, reverb, granular
+grains, sample data), use a boxed slice allocated once at construction
+time — **not** `const N: usize`.
+
+**Why:**
+
+- Const N locks buffer size at compile time, breaking runtime sample-rate
+  flexibility (44.1 vs 48 kHz needs different sizes)
+- Const N pollutes downstream types virally — `Delay<S, 96000>` and
+  `Delay<S, 44100>` are different types; every combinator that wraps a
+  delay would need its own const generic
+- `Box<[f32]>` allocates once on the main thread before `play()`, never
+  in the callback — the `GuardedAllocator` is not violated
+- This is how `fundsp`, `Tone.js`, and DAW plugins handle it
+
+Reserve `const N` for things that genuinely are fixed by nature (e.g.
+`VoicePool<S, 16>` where the user picks the polyphony at construction
+and it never changes).
+
+### Sample graveyard for audio-thread `Arc` drops
+
+Any signal that holds an `Arc<[f32]>` (Sampler, future Reverb impulse
+responses, future Granular sample pools) has a lifecycle problem:
+
+- `Arc::clone` on the audio thread is fine (atomic refcount bump)
+- `Arc::drop` on the **last** reference calls the allocator
+- If the audio thread ends up holding the last `Arc`, dropping happens
+  in the callback → `GuardedAllocator` fires
+
+**Fix:** a shared SPSC "graveyard" that lets the audio thread ship `Arc`s
+back to the main thread for dropping.
+
+```rust
+// Conceptual API — flesh out in Sprint 1 alongside Sampler
+pub(crate) struct Graveyard<T: Send + 'static>(Producer<Arc<T>>);
+
+impl<T: Send + 'static> Graveyard<T> {
+    pub fn send(&self, arc: Arc<T>) { let _ = self.0.push(arc); }
+}
+```
+
+Factor this into `nyx-core` as first-class infrastructure during Sprint 1
+so Sprint 2 reverb and Sprint 3 granular can reuse it immediately. Do
+**not** ship it ad-hoc inside `Sampler`.
+
+### `thiserror` for new error types
+
+Adopt `thiserror = "1"` for new error types starting Sprint 1 (`WavError`,
+`SampleError`). Existing hand-rolled `Display + Error` impls
+(`EngineError`, `MicError`, `MidiError`, etc.) stay as-is; migrate them
+opportunistically when touched for other reasons. `thiserror` is a tiny,
+ubiquitous dep — the consistency win across the codebase outweighs the
+extra crate.
+
+---
+
+## Sprint-Wide Checklist
+
+Before merging any feature (Sprint 1 or later):
+
+- [ ] Public API signatures locked and documented
+- [ ] Concrete return types — no `Box<dyn>` except via explicit `.boxed()`
+- [ ] Audio-callback path passes the `GuardedAllocator` test
+- [ ] `IntoParam` accepted wherever a parameter could plausibly be modulated
+- [ ] At least one ≤ 20-line cookbook example per item in
+      `nyx-prelude/examples/`
+- [ ] `docs/manual.md` updated with the API shape and an example
+- [ ] Deterministic outputs have golden-file regression tests
+- [ ] No new `unsafe` without a justification comment
+- [ ] `cargo clippy --workspace -- -D warnings` still clean
+- [ ] No regressions in existing tests (currently 254 + new tests)
+
+---
+
+## Cross-Cutting Open Questions
+
+Decisions that shape multiple features. Resolve once, re-use everywhere.
+
+1. **`SignalExt` placement.** One canonical `SignalExt` with all
+   combinators, or grouped (`DelayExt`, `SamplerExt`, `FilterExt`)?
+   Recommendation: **one `SignalExt`** for Sprint 1, split later if it
+   grows beyond ~30 methods.
+
+2. **`IntoParam` for `f32` vs `Signal`.** The fluency goal requires
+   `osc::sine(440.0).delay(0.375)` to work (with bare `f32`) AND
+   `osc::sine(440.0).delay(lfo)` (with a `Signal`). Our current
+   `IntoParam` trait with associated `type Signal` handles both via
+   blanket impls — keep as-is. Sprint 1 spec uses `IntoParam<f32>`
+   notation as shorthand for "our `IntoParam` where the parameter is a
+   float"; the trait itself doesn't need a type parameter.
+
+3. **Graveyard infrastructure — built in Sprint 1.** Not ad-hoc. See
+   architectural notes above.
+
+4. **Feature flags.** `wav` feature gates both `render_to_wav` and
+   `Sampler::load(path)`. `Sampler::from_buffer(...)` is available
+   without the feature for users who load samples through other means.
 
 ---
 
@@ -78,6 +214,7 @@ signal.bitcrush(8).downsample(0.25)
 Significant features that round out the synthesis toolkit.
 
 ### 6. Reverb (Freeverb or Dattorro plate) (1 week)
+
 The single most-requested effect.
 
 - Freeverb: 8 comb + 4 allpass, ~200 LOC, fixed buffers
@@ -86,6 +223,7 @@ The single most-requested effect.
 - fundsp ships `reverb_stereo`
 
 ### 7. Stereo signal type + proper pan/width (4–5 days) — REFACTOR
+
 Introduce `StereoSignal` trait returning `(f32, f32)` or `[f32; 2]`.
 
 ```rust
@@ -97,6 +235,7 @@ osc::sine(440).widen(0.7).haas(15.0)
 - Current `.pan()` is a hack mono-fold; this makes stereo real
 
 ### 8. FM operator (3–4 days)
+
 First-class phase modulation of a carrier with feedback.
 
 ```rust
@@ -108,6 +247,7 @@ osc::sine(440.0).fm(osc::sine(660.0), 2.0)
 - Fits `Param<S>` perfectly
 
 ### 9. Wavetable oscillator (3 days)
+
 User-drawn or preset waveforms with interpolation.
 
 ```rust
@@ -119,6 +259,7 @@ Wavetable::new(&[f32; 2048]).freq(220.0)
 - Pairs beautifully with hot-reload
 
 ### 10. State-variable filter (1–2 days)
+
 SVF (Chamberlin or Andy Simper ZDF) gives LP/HP/BP/notch from one
 struct with cleaner modulation than biquad.
 
@@ -139,10 +280,12 @@ signal.svf_notch(cutoff, q)
 Ecosystem + advanced synthesis.
 
 ### 11. Chorus + Flanger (1 day each, after #1)
+
 Both are modulated short delays. ~50 LOC wrappers on Delay.
 Ubiquitous, expected.
 
 ### 12. Bus / send-return routing (1 week)
+
 "One reverb, many sources" — the standard DAW mental model.
 
 ```rust
@@ -156,6 +299,7 @@ let mix = dry_mix + reverb_bus.process(dattorro_reverb);
 - High value for anything beyond single-voice sketches
 
 ### 13. Compressor / sidechain (3–4 days)
+
 Feed-forward RMS or peak compressor with attack/release/ratio/threshold.
 Sidechain input = a second `Signal`.
 
@@ -167,6 +311,7 @@ bass.compress(threshold, ratio).sidechain(kick_trigger)
 - Completes the dynamics section (peak limiter + clip already exist)
 
 ### 14. Granular engine (1–2 weeks)
+
 Fixed grain pool (same pattern as `VoicePool<S, N>`).
 
 ```rust
@@ -181,6 +326,7 @@ Granular::new(sample, GRAIN_POOL_SIZE)
 - Fits the pool pattern we already use
 
 ### 15. Pitch detection (YIN or autocorrelation) (4–5 days)
+
 Enables mic-driven synths, tuners, auto-harmonisers.
 
 ```rust
@@ -214,28 +360,18 @@ These were considered and rejected:
 
 ## Recommended Order
 
-**Sprint 1 (~1.5 weeks)**: #1 (Delay), #2 (WAV export), #3 (Sampler),
-#4 (Probability), #5 (Bitcrusher)
+**Sprint 1 (~1.5 weeks)** — see [SPRINT_1_SPEC.md](SPRINT_1_SPEC.md):
+WAV export → Bitcrusher → Delay → Karplus-Strong → Sampler → Probability
 
-**Sprint 2 (~3 weeks)**: #6 (Reverb), #7 (Stereo refactor), #8 (FM op),
-#9 (Wavetable), #10 (SVF)
+**Sprint 2 (~3 weeks)**: Reverb, Stereo refactor, FM operator,
+Wavetable, State-variable filter
 
-**Sprint 3**: #11 (Chorus/Flanger), #12 (Bus routing), #13 (Compressor),
-#14 (Granular), #15 (Pitch detection)
+**Sprint 3**: Chorus/Flanger, Bus routing, Compressor, Granular,
+Pitch detection
 
 After Sprint 1, Nyx will feel dramatically more complete for
 beat-making and lo-fi work. After Sprint 2, it'll be genuinely
 competitive with fundsp feature-wise while staying far more accessible.
 
----
-
-## Sanity Checks
-
-Before starting any item, verify:
-
-- [ ] It compiles to a concrete type (no `Box<dyn>` except via `.boxed()`)
-- [ ] Audio-callback path allocates zero bytes (test with `GuardedAllocator`)
-- [ ] Parameters accept `IntoParam` so both `f32` and `Signal` work
-- [ ] A cookbook example ≤ 20 lines demonstrates a real musical result
-- [ ] Docs/manual updated with API shape and at least one example
-- [ ] Golden-file regression test if the output is deterministic
+Before starting any item, run through the **Sprint-Wide Checklist**
+above.

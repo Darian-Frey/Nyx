@@ -17,11 +17,21 @@ pub mod midi;
 pub mod osc_input;
 pub mod mic;
 pub mod hotswap;
+pub mod crush;
+pub mod delay;
+pub mod pluck;
+pub mod sample;
+#[cfg(feature = "wav")]
+pub mod wav;
 
 pub use signal::{
     AudioContext, Signal, SignalExt,
     Add, Amp, Clip, Mix, Mul, Offset, Pan, SoftClip,
 };
+pub use crush::{BitCrush, Downsample};
+pub use delay::{Delay, DELAY_MAX_SR, MAX_FEEDBACK};
+pub use pluck::{pluck, Pluck};
+pub use sample::{Sample, SampleError, Sampler, SamplerMode};
 pub use param::Param;
 pub use voice::VoicePool;
 #[cfg(feature = "audio")]
@@ -47,3 +57,5 @@ pub use osc_input::{OscParam, OscParamWriter, OscSignal};
 pub use osc_input::{osc_listen, OscListener, OscError};
 #[cfg(feature = "audio")]
 pub use mic::{mic, mic_with_buffer, MicHandle, MicError, MicSignal};
+#[cfg(feature = "wav")]
+pub use wav::{render_to_wav, render_to_wav_f32, WavError};
