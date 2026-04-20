@@ -1309,6 +1309,7 @@ how little code it takes to get a real musical result.
 | [`wavetable.rs`](../nyx-prelude/examples/wavetable.rs) | Custom "supersaw-lite" wavetable + sine sub through a slow-wobble SVF lowpass | `cargo run -p nyx-prelude --example wavetable --release` |
 | [`stereo_sweep.rs`](../nyx-prelude/examples/stereo_sweep.rs) | Panning saw bass (LFO-swept L↔R) plus Haas-widened pluck chord — demonstrates the stereo engine | `cargo run -p nyx-prelude --example stereo_sweep --release` |
 | [`reverb.rs`](../nyx-prelude/examples/reverb.rs) | 5-voice Cm7 pad with slow LFO swell through a big Freeverb room | `cargo run -p nyx-prelude --example reverb --release` |
+| [`trance.rs`](../nyx-prelude/examples/trance.rs) | 90-second trance track at 138 BPM — full production: kick/snare/hats, 16th bass, arp, supersaw lead, reverb pad, riser — across 6 sections (intro/build/drop/breakdown/final build/final drop) | `cargo run -p nyx-prelude --example trance --release` |
 
 **Why release mode?** Debug builds of cpal + DSP are ~20× slower than
 release. Always use `--release` for anything that produces audio.
