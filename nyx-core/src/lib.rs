@@ -21,6 +21,11 @@ pub mod crush;
 pub mod delay;
 pub mod pluck;
 pub mod sample;
+pub mod svf;
+pub mod fm;
+pub mod wavetable;
+pub mod haas;
+pub mod reverb;
 #[cfg(feature = "wav")]
 pub mod wav;
 
@@ -32,6 +37,11 @@ pub use crush::{BitCrush, Downsample};
 pub use delay::{Delay, DELAY_MAX_SR, MAX_FEEDBACK};
 pub use pluck::{pluck, Pluck};
 pub use sample::{Sample, SampleError, Sampler, SamplerMode};
+pub use svf::{Svf, SvfMode};
+pub use fm::{fm_op, FmOp};
+pub use wavetable::{Wavetable, WavetableOsc};
+pub use haas::{Haas, HaasSide};
+pub use reverb::Freeverb;
 pub use param::Param;
 pub use voice::VoicePool;
 #[cfg(feature = "audio")]

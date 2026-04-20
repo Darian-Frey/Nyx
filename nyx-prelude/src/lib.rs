@@ -13,6 +13,11 @@ pub use nyx_core::{
     pluck, Pluck,
     Sample, SampleError, Sampler, SamplerMode,
     Biquad, FilterExt, FilterMode,
+    Svf, SvfMode,
+    fm_op, FmOp,
+    Wavetable, WavetableOsc,
+    Haas, HaasSide,
+    Freeverb,
     Gain, PeakLimiter,
     Scope, ScopeExt, ScopeHandle,
     Inspect, InspectExt,
@@ -35,6 +40,7 @@ pub use nyx_core::hotswap;
 // ─── nyx-core: MIDI / OSC / mic (types are always exported) ──────────
 pub use nyx_core::midi;
 pub use nyx_core::osc_input;
+pub use nyx_core::osc_input::{OscParam, OscParamWriter, OscSignal};
 pub use nyx_core::{CcMap, CcSignal, CcWriter, MidiEvent, MidiReceiver, MidiSender};
 
 // ─── nyx-core: engine (audio feature only) ───────────────────────────

@@ -6,6 +6,7 @@
 
 use crate::param::{IntoParam, Param};
 use crate::signal::{AudioContext, Signal};
+use crate::svf::{Svf, SvfMode};
 
 /// One-pole smoother for a single coefficient.
 ///
@@ -189,6 +190,52 @@ pub trait FilterExt: Signal + Sized {
         q: PQ,
     ) -> Biquad<Self, PC::Signal, PQ::Signal> {
         new_biquad(self, cutoff, q, FilterMode::HighPass)
+    }
+
+    /// Apply a state-variable low-pass filter (ZDF topology).
+    ///
+    /// Unlike the biquad `.lowpass()`, the SVF handles per-sample
+    /// modulation of cutoff/Q without needing coefficient smoothing —
+    /// use this when you want to sweep the filter at audio rate or
+    /// with a fast LFO and don't want click artefacts.
+    fn svf_lp<PC: IntoParam, PQ: IntoParam>(
+        self,
+        cutoff: PC,
+        q: PQ,
+    ) -> Svf<Self, PC::Signal, PQ::Signal> {
+        Svf::new(self, cutoff.into_param(), q.into_param(), SvfMode::LowPass)
+    }
+
+    /// Apply a state-variable high-pass filter (ZDF topology).
+    fn svf_hp<PC: IntoParam, PQ: IntoParam>(
+        self,
+        cutoff: PC,
+        q: PQ,
+    ) -> Svf<Self, PC::Signal, PQ::Signal> {
+        Svf::new(self, cutoff.into_param(), q.into_param(), SvfMode::HighPass)
+    }
+
+    /// Apply a state-variable band-pass filter (ZDF topology).
+    ///
+    /// Passes a narrow band around `cutoff`, attenuating frequencies
+    /// above and below. Narrower with higher `Q`.
+    fn svf_bp<PC: IntoParam, PQ: IntoParam>(
+        self,
+        cutoff: PC,
+        q: PQ,
+    ) -> Svf<Self, PC::Signal, PQ::Signal> {
+        Svf::new(self, cutoff.into_param(), q.into_param(), SvfMode::BandPass)
+    }
+
+    /// Apply a state-variable notch (band-reject) filter (ZDF topology).
+    ///
+    /// Attenuates a narrow band around `cutoff` while passing the rest.
+    fn svf_notch<PC: IntoParam, PQ: IntoParam>(
+        self,
+        cutoff: PC,
+        q: PQ,
+    ) -> Svf<Self, PC::Signal, PQ::Signal> {
+        Svf::new(self, cutoff.into_param(), q.into_param(), SvfMode::Notch)
     }
 }
 

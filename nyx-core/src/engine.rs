@@ -69,9 +69,24 @@ impl Engine {
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
                     for frame in data.chunks_mut(channels) {
                         let ctx = AudioContext { sample_rate, tick };
-                        let sample = signal.next(&ctx);
-                        for out in frame.iter_mut() {
-                            *out = sample;
+                        let (left, right) = signal.next_stereo(&ctx);
+                        match channels {
+                            1 => {
+                                // Mono output: fold L+R.
+                                frame[0] = left + right;
+                            }
+                            _ => {
+                                frame[0] = left;
+                                if let Some(r_slot) = frame.get_mut(1) {
+                                    *r_slot = right;
+                                }
+                                // Surround / extra channels: fill with
+                                // (L+R)/2 mono mix so nothing's silent.
+                                let mono = (left + right) * 0.5;
+                                for out in frame.iter_mut().skip(2) {
+                                    *out = mono;
+                                }
+                            }
                         }
                         tick += 1;
                     }

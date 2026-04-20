@@ -36,6 +36,31 @@ impl<S: Signal> Signal for Sine<S> {
     }
 }
 
+impl<S: Signal> Sine<S> {
+    /// Convert this sine into an FM (phase modulation) operator.
+    ///
+    /// The carrier frequency is preserved from this sine; `modulator`
+    /// is an arbitrary signal whose output is added to the carrier's
+    /// phase, scaled by `index`.
+    ///
+    /// ```ignore
+    /// // DX7-style bell: 1:2 modulator ratio, index 3
+    /// osc::sine(440.0).fm(osc::sine(880.0), 3.0)
+    /// ```
+    pub fn fm<M: Signal, I: IntoParam>(
+        self,
+        modulator: M,
+        index: I,
+    ) -> crate::fm::FmOp<S, M, I::Signal> {
+        crate::fm::FmOp::from_sine_parts(
+            self.freq,
+            modulator,
+            index.into_param(),
+            self.phase,
+        )
+    }
+}
+
 /// Sawtooth oscillator (naive, non-band-limited).
 pub struct Saw<S: Signal> {
     phase: f32,

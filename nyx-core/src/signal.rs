@@ -19,7 +19,22 @@ pub struct AudioContext {
 /// The trait is `Send` (signals are moved to the audio thread) but not
 /// `Sync` (they are exclusively owned by that thread).
 pub trait Signal: Send {
+    /// Produce the next mono sample.
     fn next(&mut self, ctx: &AudioContext) -> f32;
+
+    /// Produce the next stereo `(left, right)` pair.
+    ///
+    /// The default implementation duplicates the mono output into both
+    /// channels. Stereo-native signals (like [`Pan`], Haas widener,
+    /// future reverb) override this method to produce a real stereo
+    /// image while their `next` implementation folds back to mono.
+    ///
+    /// The audio engine calls `next_stereo` once per frame and writes
+    /// the two samples to the left and right output channels.
+    fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
+        let s = self.next(ctx);
+        (s, s)
+    }
 }
 
 /// Blanket impl: any mutable closure that matches the signature is a Signal.
@@ -36,6 +51,10 @@ where
 impl Signal for Box<dyn Signal> {
     fn next(&mut self, ctx: &AudioContext) -> f32 {
         (**self).next(ctx)
+    }
+
+    fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
+        (**self).next_stereo(ctx)
     }
 }
 
@@ -178,6 +197,38 @@ pub trait SignalExt: Signal + Sized {
     fn delay(self, time_secs: f32) -> Delay<Self, ConstSignal, ConstSignal, ConstSignal> {
         new_delay(self, time_secs)
     }
+
+    /// Apply a Haas-effect stereo widener. Delays the right channel by
+    /// `delay_ms` milliseconds (5–30 ms for the classic pop-mix width);
+    /// the left channel plays in time.
+    ///
+    /// ```ignore
+    /// osc::saw(220.0).haas(15.0)
+    /// ```
+    fn haas(self, delay_ms: f32) -> crate::haas::Haas<Self> {
+        crate::haas::Haas::new(self, delay_ms, crate::haas::HaasSide::Right)
+    }
+
+    /// Haas widener with explicit side selection.
+    fn haas_side(self, delay_ms: f32, side: crate::haas::HaasSide) -> crate::haas::Haas<Self> {
+        crate::haas::Haas::new(self, delay_ms, side)
+    }
+
+    /// Wrap this signal in a Freeverb stereo reverb.
+    ///
+    /// Returns a [`Freeverb`](crate::reverb::Freeverb) with builder
+    /// methods (`.room_size()`, `.damping()`, `.wet()`, `.width()`).
+    ///
+    /// ```ignore
+    /// osc::saw(220.0)
+    ///     .freeverb()
+    ///     .room_size(0.85)
+    ///     .damping(0.5)
+    ///     .wet(0.3)
+    /// ```
+    fn freeverb(self) -> crate::reverb::Freeverb<Self> {
+        crate::reverb::Freeverb::new(self)
+    }
 }
 
 // Blanket impl: every Signal gets combinator methods for free.
@@ -238,23 +289,21 @@ pub struct Pan<A: Signal, S: Signal> {
     pos: Param<S>,
 }
 
-impl<A: Signal, S: Signal> Pan<A, S> {
-    /// Get the stereo pair (left, right) for the current sample.
-    pub fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
-        let sample = self.source.next(ctx);
-        let p = self.pos.next(ctx).clamp(-1.0, 1.0);
-        // Constant-power-ish pan: linear crossfade.
-        let left = sample * (1.0 - p) * 0.5;
-        let right = sample * (1.0 + p) * 0.5;
-        (left, right)
-    }
-}
-
 impl<A: Signal, S: Signal> Signal for Pan<A, S> {
-    /// Mono fold: sum of left and right channels.
+    /// Mono fold: sum of left and right channels (pan-law preserving;
+    /// hard-left pan outputs `(sample, 0)`, summing to `sample`).
     fn next(&mut self, ctx: &AudioContext) -> f32 {
         let (l, r) = self.next_stereo(ctx);
         l + r
+    }
+
+    /// Real stereo pair with linear pan law.
+    fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
+        let sample = self.source.next(ctx);
+        let p = self.pos.next(ctx).clamp(-1.0, 1.0);
+        let left = sample * (1.0 - p) * 0.5;
+        let right = sample * (1.0 + p) * 0.5;
+        (left, right)
     }
 }
 

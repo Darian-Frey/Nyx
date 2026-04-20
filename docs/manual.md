@@ -180,11 +180,20 @@ crates directly: `use nyx_core::osc;` and `use nyx_seq::inst;` etc.
 
 ### The Signal Trait
 
-Everything in Nyx is a **Signal** — a stream of mono audio samples:
+Everything in Nyx is a **Signal** — a stream of audio samples. Every
+signal produces a mono output and, by default, a stereo `(L, R)` pair
+that duplicates the mono sample:
 
 ```rust
 pub trait Signal: Send {
     fn next(&mut self, ctx: &AudioContext) -> f32;
+
+    /// Default: duplicates mono into both channels.
+    /// Stereo-native signals (Pan, Haas, Reverb) override this.
+    fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
+        let s = self.next(ctx);
+        (s, s)
+    }
 }
 ```
 
@@ -205,6 +214,29 @@ let my_signal = |ctx: &AudioContext| {
     (ctx.tick as f32 * 440.0 / ctx.sample_rate * std::f32::consts::TAU).sin()
 };
 ```
+
+The audio engine calls `next_stereo` once per frame and writes the
+two samples to the output's left and right channels. Mono-only
+hardware folds the two channels back to `L + R`.
+
+### Stereo width (Pan + Haas)
+
+Two combinators override `next_stereo` to produce real stereo:
+
+```rust
+// Pan: linear pan law, -1 (hard left) to +1 (hard right)
+osc::saw(220.0).pan(0.5)         // 75% right
+
+// Haas: mono → widened stereo via a short delay on one channel
+osc::saw(220.0).haas(15.0)       // right channel lags by 15 ms
+osc::saw(220.0).haas_side(15.0, HaasSide::Left)
+```
+
+Mono-fold behaviour:
+
+- **Pan** — pan-law preserving; `L + R` equals the input signal
+- **Haas** — mono-folds to a mild comb filter (small HF dip at typical
+  widths, usually inaudible)
 
 ### Param — Static or Modulated
 
@@ -266,6 +298,86 @@ let vibrato = osc::sine(5.0).amp(10.0).offset(440.0);
 let signal = osc::sine(vibrato);
 ```
 
+### Wavetable
+
+User-drawn or preset waveforms with linear interpolation. A `Wavetable`
+holds one period as `Arc<[f32]>` — cheap to clone across many voices.
+
+```rust
+// Preset tables
+Wavetable::sine(2048).freq(440.0)
+Wavetable::saw(2048).freq(110.0)
+Wavetable::square(2048).freq(220.0)
+Wavetable::triangle(2048).freq(440.0)
+
+// Custom shape via closure (t ∈ [0, 1))
+let harmonic_stack = Wavetable::from_fn(4096, |t| {
+    let tau = t * std::f32::consts::TAU;
+    (tau.sin() + (2.0 * tau).sin() * 0.3 + (3.0 * tau).sin() * 0.2) / 1.5
+});
+let osc = harmonic_stack.freq(220.0);
+
+// Or from raw data
+let table = Wavetable::from_vec(my_samples);
+```
+
+| Method | Description |
+| --- | --- |
+| `Wavetable::new(&[f32])` / `::from_vec(Vec<f32>)` | Build from existing samples |
+| `Wavetable::from_fn(size, f)` | Sample `f(t)` at `size` points with `t ∈ [0, 1)` |
+| `Wavetable::sine/saw/square/triangle(size)` | Preset naïve waveforms |
+| `.freq(impl IntoParam) -> WavetableOsc` | Build an oscillator reading this table |
+| `.len()` / `.is_empty()` / `.clone()` | Introspection + cheap refcount-bump clone |
+
+Cloning a `Wavetable` is a refcount bump, not a data copy — build a
+table once, share it across an arbitrary number of voices.
+
+**Lifetime caveat:** same as [`Sample`](#sample-playback) — keep one
+reference to the source `Wavetable` alive while any oscillator cloned
+from it is playing, so the final `Arc::drop` doesn't land on the audio
+thread.
+
+### FM Operator (Phase Modulation)
+
+True DX7-style FM — technically *phase modulation* of a sine carrier.
+The classic bell/electric-piano/bass sound engine.
+
+```rust
+// DX7-style bell with a 1:2 modulator ratio, index 3
+play(fm_op(440.0, osc::sine(880.0), 3.0)).unwrap();
+
+// Fluent alternative: convert an existing sine into an FM operator
+osc::sine(440.0).fm(osc::sine(880.0), 3.0)
+
+// Self-feedback adds harmonics (sawtooth-ish as feedback → 1)
+fm_op(440.0, osc::sine(660.0), 2.0).feedback(0.5)
+```
+
+**Formula:**
+
+```text
+output = sin(2π * (phase + index * modulator + feedback * last_output))
+phase += carrier_freq / sample_rate
+```
+
+| Parameter | Typical range | Effect |
+| --- | --- | --- |
+| `carrier_freq` | any Hz | Pitch of the operator |
+| `modulator` | any `Signal` | Added to the carrier's phase each sample |
+| `index` | `0.0` – `~10.0` | Modulation depth. `0` = pure sine; `3+` = bright bells |
+| `feedback` | `[-1, 1]` (clamped) | Routes own output back into phase — adds harmonics |
+
+Carrier freq, modulator, and index all accept `IntoParam` — so any of
+them can be modulated by another signal, envelope, or LFO.
+
+**Classical FM ratios** (modulator/carrier):
+
+- `1:1` → sawtooth-ish
+- `1:2` → bell / chime
+- `1:3` → clarinet
+- `2:3` → brass
+- non-integer → inharmonic metal
+
 ---
 
 ## Signal Combinators
@@ -313,11 +425,44 @@ osc::saw(110.0).lowpass(lfo, 2.0)
 ```
 
 | Method | Description |
-|---|---|
-| `.lowpass(cutoff, q)` | Resonant low-pass filter |
-| `.highpass(cutoff, q)` | Resonant high-pass filter |
+| --- | --- |
+| `.lowpass(cutoff, q)` | Resonant biquad low-pass filter (smoothed ~5 ms) |
+| `.highpass(cutoff, q)` | Resonant biquad high-pass filter (smoothed ~5 ms) |
 
 Both `cutoff` and `q` accept `f32` or any `Signal`.
+
+### State-Variable Filter (SVF)
+
+For fast-modulating cutoff or Q, use the zero-delay-feedback (ZDF)
+state-variable filter. It tracks parameter changes correctly at the
+sample rate with no coefficient smoothing needed — so you can sweep
+the cutoff at audio rate without clicks, which biquad can't do
+cleanly.
+
+```rust
+// Wobble bass: audio-rate cutoff modulation
+let wobble = osc::sine(4.0).amp(1500.0).offset(1700.0);
+osc::saw(55.0).svf_lp(wobble, 4.0).soft_clip(1.5)
+```
+
+| Method | Description |
+| --- | --- |
+| `.svf_lp(cutoff, q)` | SVF low-pass |
+| `.svf_hp(cutoff, q)` | SVF high-pass |
+| `.svf_bp(cutoff, q)` | SVF band-pass (higher Q → narrower band) |
+| `.svf_notch(cutoff, q)` | SVF notch / band-reject |
+
+**Topology:** Andy Simper's "Linear Trapezoidal State Variable Filter"
+(2013) — the same variant used in Surge XT, Vital, and other modern
+soft synths.
+
+**When to use biquad vs SVF:**
+
+- **Biquad** — static or slowly-changing filters, mastering EQ, filter
+  banks. Cheaper (fixed coefficients after smoothing).
+- **SVF** — wobble basses, formant sweeps, fast filter LFOs, anything
+  that needs per-sample modulation. Exposes band-pass and notch modes
+  that biquad currently doesn't.
 
 ---
 
@@ -339,6 +484,37 @@ Hard clip and soft clip are also available as combinators:
 signal.clip(0.8)        // hard clip to [-0.8, 0.8]
 signal.soft_clip(2.0)   // tanh(signal * 2.0)
 ```
+
+### Reverb (Freeverb)
+
+Classic Freeverb stereo reverb — 8 parallel lowpass-feedback comb
+filters feeding 4 series Schroeder all-pass filters, with a stereo
+spread on the right channel. Public-domain algorithm from Jezar at
+Dreampoint (2000). Overrides `next_stereo` for genuine stereo bloom.
+
+```rust
+let wet = osc::saw(220.0)
+    .freeverb()
+    .room_size(0.85)     // larger → longer decay
+    .damping(0.5)        // more → warmer, less HF tail
+    .width(1.0)          // 1 = full stereo spread, 0 = mono reverb
+    .wet(0.3);           // 0 = dry only, 1 = pure reverb
+```
+
+| Method | Range | Effect |
+| --- | --- | --- |
+| `.room_size(r)` | `[0, 1]` | Comb feedback. Longer tails at higher values. |
+| `.damping(d)` | `[0, 1]` | One-pole lowpass on feedback. Warmer/darker at higher values. |
+| `.wet(w)` | `[0, 1]` | Wet/dry mix. |
+| `.width(w)` | `[0, 1]` | `1` = full stereo spread, `0` = mono reverb (both channels identical). |
+
+**Mono compat:** `next()` returns `dry + (wet_l + wet_r) / 2`. At
+`wet(0)`, mono output is the dry signal unchanged.
+
+**Buffers:** all comb and allpass buffers pre-allocated at construction
+(sized for 96 kHz upper bound); zero allocation per sample. At first
+`.next()` call, the active ring lengths are scaled to match the actual
+stream sample rate.
 
 ### Delay / Echo
 
@@ -1128,6 +1304,11 @@ how little code it takes to get a real musical result.
 | [`pluck.rs`](../nyx-prelude/examples/pluck.rs) | Four-voice Karplus-Strong Cm7 chord that rings out | `cargo run -p nyx-prelude --example pluck --release` |
 | [`sampler.rs`](../nyx-prelude/examples/sampler.rs) | Synthesised kick rendered into a buffer, retriggered on beats at shifting pitches | `cargo run -p nyx-prelude --example sampler --release` |
 | [`conditional.rs`](../nyx-prelude/examples/conditional.rs) | `.degrade()` kick on every beat + `.every(4, reverse)` on Euclidean hi-hats | `cargo run -p nyx-prelude --example conditional --release` |
+| [`svf_sweep.rs`](../nyx-prelude/examples/svf_sweep.rs) | Pink noise through a narrow SVF band-pass whose cutoff sweeps 200 Hz → 8 kHz | `cargo run -p nyx-prelude --example svf_sweep --release` |
+| [`fm_bell.rs`](../nyx-prelude/examples/fm_bell.rs) | DX7-style FM bell with 1:2 modulator ratio and decaying modulation index, playing random C pentatonic-minor notes | `cargo run -p nyx-prelude --example fm_bell --release` |
+| [`wavetable.rs`](../nyx-prelude/examples/wavetable.rs) | Custom "supersaw-lite" wavetable + sine sub through a slow-wobble SVF lowpass | `cargo run -p nyx-prelude --example wavetable --release` |
+| [`stereo_sweep.rs`](../nyx-prelude/examples/stereo_sweep.rs) | Panning saw bass (LFO-swept L↔R) plus Haas-widened pluck chord — demonstrates the stereo engine | `cargo run -p nyx-prelude --example stereo_sweep --release` |
+| [`reverb.rs`](../nyx-prelude/examples/reverb.rs) | 5-voice Cm7 pad with slow LFO swell through a big Freeverb room | `cargo run -p nyx-prelude --example reverb --release` |
 
 **Why release mode?** Debug builds of cpal + DSP are ~20× slower than
 release. Always use `--release` for anything that produces audio.
