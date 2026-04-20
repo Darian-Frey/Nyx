@@ -1,10 +1,28 @@
-# Deferred Roadmap — DAW Bridge & WASM Target
+# Deferred Roadmap — Large Multi-Phase Features
 
-This document is the planning doc for the two features that were intentionally
-pushed past v1.0: **DAW integration** (JACK/PipeWire) and **WASM target**.
-Both are large, multi-phase efforts that don't fit into a weekend. Each
-section below breaks the work into ordered phases with explicit deliverables,
-blockers, and test strategies so a future session can pick it up cold.
+This document is the planning doc for features that were intentionally
+pushed past v1.0: **DAW integration** (JACK/PipeWire), **WASM target**,
+and the **mini-notation DSL** (Strudel-alike). All are large, multi-phase
+efforts that don't fit into a weekend. Each section below breaks the
+work into ordered phases with explicit deliverables, blockers, and test
+strategies so a future session can pick it up cold.
+
+- **A. DAW Bridge** — §2 of this doc
+- **B. WASM Target** — §3 of this doc
+- **C. Mini-Notation & Cycles DSL** — see [`phase-c-strudel.md`](phase-c-strudel.md)
+  (separate doc due to size)
+
+Recommended attack order (revised after Phase C was added):
+
+```text
+Sprint 3 (DSP completion)
+   ↓
+Phase C (mini-notation DSL — biggest UX win, enables Phase B's real use case)
+   ↓
+Phase B (WASM — pairs with Phase C for browser live-coding)
+   ↓
+Phase A (DAW bridge — whenever there's demand)
+```
 
 ---
 

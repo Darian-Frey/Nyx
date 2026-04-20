@@ -280,13 +280,20 @@ polish work.
 
 ### Future (v2.0)
 
-- [ ] **DAW bridge** (JACK/PipeWire integration) — see
-      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
-      detailed phased plan (A0–A5).
+- [ ] **Mini-notation & Cycles DSL** (Strudel/TidalCycles-style live-coding
+      interface on top of Nyx) — see
+      [docs/phase-c-strudel.md](docs/phase-c-strudel.md) for the
+      detailed phased plan (C0–C6). Pairs with WASM for browser use.
 - [ ] **WASM target** — see
       [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
       detailed phased plan (B0–B6).
+- [ ] **DAW bridge** (JACK/PipeWire integration) — see
+      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
+      detailed phased plan (A0–A5).
 - [ ] Multi-channel (surround) output support beyond stereo
+
+**Recommended attack order:** Sprint 3 (DSP completion) → Phase C (DSL) →
+Phase B (WASM) → Phase A (DAW bridge).
 
 ### Feature Expansion
 
