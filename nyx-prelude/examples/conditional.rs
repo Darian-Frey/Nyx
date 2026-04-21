@@ -15,9 +15,7 @@ fn main() {
 
     // 4-on-the-floor with 20% degradation
     let kick_pat = Pattern::new(&[true, true, true, true]);
-    let mut kick_seq = Sequence::new(kick_pat, 1.0)
-        .degrade(0.2)
-        .seed(42);
+    let mut kick_seq = Sequence::new(kick_pat, 1.0).degrade(0.2).seed(42);
 
     // Sixteenth-note hats that reverse their pattern every 4 bars —
     // mostly even pulses (14/16), occasional rests.

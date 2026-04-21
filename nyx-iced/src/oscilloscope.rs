@@ -4,8 +4,8 @@ use iced::mouse;
 use iced::widget::canvas::{self, Canvas, Frame, Path, Stroke};
 use iced::{Element, Length, Point, Rectangle, Theme};
 
-use nyx_core::ScopeHandle;
 use crate::theme::NyxColors;
+use nyx_core::ScopeHandle;
 
 /// An oscilloscope canvas that renders waveform data from a `ScopeHandle`.
 pub struct OscilloscopeCanvas {

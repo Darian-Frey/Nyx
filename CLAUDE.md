@@ -258,14 +258,14 @@ polish work.
 
 - [x] **License files** — `LICENSE-MIT` and `LICENSE-APACHE` added to repo
       root; all crates inherit `license.workspace = true`.
-- [ ] **CI pipeline** — GitHub Actions workflow running:
-  - `cargo build --workspace`
-  - `cargo test --workspace`
-  - `cargo clippy --workspace -- -D warnings`
-  - `cargo fmt --check`
-  - No-alloc guard test with `GuardedAllocator`
-  - Golden-file regression tests
-  - `cargo audit` and `cargo deny`
+- [x] **CI pipeline** — GitHub Actions workflow at
+      [.github/workflows/ci.yml](.github/workflows/ci.yml) running
+      `cargo fmt --check`, `cargo clippy --workspace --all-targets -- -D warnings`,
+      `cargo build --workspace` + `cargo test --workspace` on both
+      `ubuntu-latest` and `macos-latest`, `cargo audit`, and
+      `cargo deny check` (config in [deny.toml](deny.toml)). No-alloc
+      guards (`DenyAllocGuard`) and golden-file DSP checks run as
+      regular `#[test]` functions inside the main test job.
 - [ ] **`nyx-prelude` completeness** — re-export all Phase 4–11 types from
       `nyx-seq` (Clock, Adsr, Note, Scale, Chord, Pattern, Euclid, Rng,
       Sequence, SubSynth, etc.) so users get everything with one import.

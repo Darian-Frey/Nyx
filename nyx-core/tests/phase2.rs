@@ -1,5 +1,5 @@
-use nyx_core::{AudioContext, Param, Signal, SignalExt};
 use nyx_core::param::{ConstSignal, IntoParam};
+use nyx_core::{AudioContext, Param, Signal, SignalExt};
 
 fn ctx(tick: u64) -> AudioContext {
     AudioContext {
@@ -26,10 +26,7 @@ fn boxed_signal_works() {
 
 #[test]
 fn boxed_heterogeneous_vec() {
-    let mut signals: Vec<Box<dyn Signal>> = vec![
-        Const(0.25).boxed(),
-        Const(0.5).boxed(),
-    ];
+    let mut signals: Vec<Box<dyn Signal>> = vec![Const(0.25).boxed(), Const(0.5).boxed()];
     let sum: f32 = signals.iter_mut().map(|s| s.next(&ctx(0))).sum();
     assert!((sum - 0.75).abs() < f32::EPSILON);
 }

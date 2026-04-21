@@ -136,7 +136,12 @@ impl canvas::Program<XYPadMessage> for XYPadCanvas {
         // Background
         let bg = Path::rectangle(Point::ORIGIN, bounds.size());
         frame.fill(&bg, NyxColors::BG_SURFACE);
-        frame.stroke(&bg, Stroke::default().with_color(NyxColors::BORDER).with_width(1.0));
+        frame.stroke(
+            &bg,
+            Stroke::default()
+                .with_color(NyxColors::BORDER)
+                .with_width(1.0),
+        );
 
         // Crosshair
         let px = pad + self.x * (bounds.width - 2.0 * pad);
@@ -148,7 +153,9 @@ impl canvas::Program<XYPadMessage> for XYPadCanvas {
             NyxColors::ACCENT.b,
             0.3,
         );
-        let stroke = Stroke::default().with_color(crosshair_color).with_width(1.0);
+        let stroke = Stroke::default()
+            .with_color(crosshair_color)
+            .with_width(1.0);
 
         let h_line = Path::line(Point::new(pad, py), Point::new(bounds.width - pad, py));
         let v_line = Path::line(Point::new(px, pad), Point::new(px, bounds.height - pad));
@@ -183,7 +190,12 @@ mod tests {
     use super::*;
     use iced::widget::canvas::Program;
 
-    const BOUNDS: Rectangle = Rectangle { x: 0.0, y: 0.0, width: 200.0, height: 200.0 };
+    const BOUNDS: Rectangle = Rectangle {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 200.0,
+    };
 
     fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
         mouse::Cursor::Available(Point::new(x, y))
@@ -194,7 +206,9 @@ mod tests {
     }
 
     fn move_to(x: f32, y: f32) -> Event {
-        Event::Mouse(mouse::Event::CursorMoved { position: Point::new(x, y) })
+        Event::Mouse(mouse::Event::CursorMoved {
+            position: Point::new(x, y),
+        })
     }
 
     #[test]
@@ -243,7 +257,12 @@ mod tests {
         let canvas = XYPadCanvas { x: 0.0, y: 0.0 };
         let mut state = XYPadInteraction::default();
         canvas.update(&mut state, press(), BOUNDS, cursor_at(50.0, 50.0));
-        let (_, msg) = canvas.update(&mut state, move_to(150.0, 150.0), BOUNDS, cursor_at(150.0, 150.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(150.0, 150.0),
+            BOUNDS,
+            cursor_at(150.0, 150.0),
+        );
         if let Some(XYPadMessage::Changed { x, y }) = msg {
             assert!(x > 0.6 && x < 0.85, "dragged x out of expected range: {x}");
             assert!(y > 0.15 && y < 0.4, "dragged y out of expected range: {y}");
@@ -256,7 +275,12 @@ mod tests {
     fn drag_without_press_ignored() {
         let canvas = XYPadCanvas { x: 0.5, y: 0.5 };
         let mut state = XYPadInteraction::default();
-        let (_, msg) = canvas.update(&mut state, move_to(100.0, 100.0), BOUNDS, cursor_at(100.0, 100.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(100.0, 100.0),
+            BOUNDS,
+            cursor_at(100.0, 100.0),
+        );
         assert!(msg.is_none());
     }
 

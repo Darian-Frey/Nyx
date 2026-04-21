@@ -1,4 +1,4 @@
-use nyx_seq::{Note, Scale, ScaleMode, Chord, ChordType};
+use nyx_seq::{Chord, ChordType, Note, Scale, ScaleMode};
 
 // ===================== Note tests =====================
 
@@ -15,14 +15,20 @@ fn c4_is_midi_60() {
 #[test]
 fn a4_freq_is_440() {
     let freq = Note::A4.to_freq();
-    assert!((freq - 440.0).abs() < 0.01, "A4 should be 440 Hz, got {freq}");
+    assert!(
+        (freq - 440.0).abs() < 0.01,
+        "A4 should be 440 Hz, got {freq}"
+    );
 }
 
 #[test]
 fn c4_freq() {
     let freq = Note::C4.to_freq();
     // C4 ≈ 261.63 Hz
-    assert!((freq - 261.63).abs() < 0.1, "C4 should be ~261.63 Hz, got {freq}");
+    assert!(
+        (freq - 261.63).abs() < 0.1,
+        "C4 should be ~261.63 Hz, got {freq}"
+    );
 }
 
 #[test]

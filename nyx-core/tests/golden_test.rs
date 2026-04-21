@@ -1,4 +1,4 @@
-use nyx_core::golden::{assert_golden, GoldenTest};
+use nyx_core::golden::{GoldenTest, assert_golden};
 use nyx_core::{AudioContext, Signal};
 
 struct TestSine {

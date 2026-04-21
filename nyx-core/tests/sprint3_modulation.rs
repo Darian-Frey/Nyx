@@ -1,6 +1,6 @@
 //! Sprint 3 — Chorus + Flanger tests.
 
-use nyx_core::{osc, render_to_buffer, AudioContext, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, SignalExt, osc, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -87,10 +87,7 @@ fn chorus_does_not_allocate() {
 #[test]
 fn chorus_base_delay_builder() {
     // Just verify the builder compiles and changes state.
-    let mut sig = osc::sine(440.0)
-        .chorus(0.5, 3.0)
-        .base_delay(25.0)
-        .mix(0.5);
+    let mut sig = osc::sine(440.0).chorus(0.5, 3.0).base_delay(25.0).mix(0.5);
     let _ = sig.next(&ctx(0));
 }
 
@@ -137,16 +134,26 @@ fn flanger_feedback_changes_output() {
         .skip(1000)
         .map(|(a, b)| (a - b).abs())
         .sum();
-    assert!(div > 10.0, "feedback should change output, divergence={div}");
+    assert!(
+        div > 10.0,
+        "feedback should change output, divergence={div}"
+    );
 }
 
 #[test]
 fn flanger_feedback_clamped() {
     // feedback=5 is nonsense; internally clamped to 0.95 to prevent blow-up.
-    let mut sig = osc::saw(110.0).amp(0.2).flanger(0.3, 2.0).feedback(5.0).mix(1.0);
+    let mut sig = osc::saw(110.0)
+        .amp(0.2)
+        .flanger(0.3, 2.0)
+        .feedback(5.0)
+        .mix(1.0);
     let buf = render_to_buffer(&mut sig, 0.5, SR);
     let peak = buf.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
-    assert!(peak < 10.0, "feedback clamp should prevent explosion: peak={peak}");
+    assert!(
+        peak < 10.0,
+        "feedback clamp should prevent explosion: peak={peak}"
+    );
     for &s in &buf {
         assert!(s.is_finite(), "non-finite output: {s}");
     }

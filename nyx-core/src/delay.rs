@@ -201,8 +201,7 @@ impl<S: Signal, PT: Signal, PF: Signal, PM: Signal> Signal for Delay<S, PT, PF, 
                 1.0
             };
             self.smoothed_time_samples = self.time_param.next(ctx) * ctx.sample_rate;
-            self.smoothed_feedback =
-                self.feedback_param.next(ctx).clamp(0.0, MAX_FEEDBACK);
+            self.smoothed_feedback = self.feedback_param.next(ctx).clamp(0.0, MAX_FEEDBACK);
             self.smoothed_mix = self.mix_param.next(ctx).clamp(0.0, 1.0);
             self.initialised = true;
         }

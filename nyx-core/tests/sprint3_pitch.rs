@@ -1,6 +1,6 @@
 //! Sprint 3 — YIN pitch detection tests.
 
-use nyx_core::{osc, AudioContext, DenyAllocGuard, PitchConfig, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, PitchConfig, Signal, SignalExt, osc};
 
 const SR: f32 = 44100.0;
 
@@ -95,10 +95,7 @@ fn noise_gives_low_confidence_or_no_pitch() {
     let c = pitch.confidence();
     // Noise may occasionally produce spurious peaks, but clarity should
     // be well below a clean tone's.
-    assert!(
-        c < 0.7,
-        "white noise clarity should be <0.7, got {c}"
-    );
+    assert!(c < 0.7, "white noise clarity should be <0.7, got {c}");
 }
 
 #[test]

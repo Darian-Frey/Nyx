@@ -1,6 +1,6 @@
 //! Sprint 2 — Freeverb tests.
 
-use nyx_core::{osc, render_to_buffer, AudioContext, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, SignalExt, osc, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -45,9 +45,16 @@ fn wet_zero_passes_dry_signal_through() {
     let mut sig = Impulse::new().freeverb().wet(0.0);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     // The impulse should appear at sample 0; rest should be zero.
-    assert!((buf[0] - 1.0).abs() < 1e-6, "wet=0 should pass impulse, got {}", buf[0]);
+    assert!(
+        (buf[0] - 1.0).abs() < 1e-6,
+        "wet=0 should pass impulse, got {}",
+        buf[0]
+    );
     let tail_rms = rms(&buf[100..]);
-    assert!(tail_rms < 1e-6, "wet=0 should have silent tail, rms={tail_rms}");
+    assert!(
+        tail_rms < 1e-6,
+        "wet=0 should have silent tail, rms={tail_rms}"
+    );
 }
 
 #[test]
@@ -57,9 +64,16 @@ fn wet_one_produces_pure_reverb_tail() {
     let buf = render_to_buffer(&mut sig, 0.5, SR);
     // Early portion should have reverb buildup (non-zero).
     let rms_mid = rms(&buf[1000..5000]);
-    assert!(rms_mid > 1e-4, "wet=1 should have audible tail, rms={rms_mid}");
+    assert!(
+        rms_mid > 1e-4,
+        "wet=1 should have audible tail, rms={rms_mid}"
+    );
     // First sample should NOT be the impulse itself.
-    assert!(buf[0].abs() < 0.1, "wet=1 should suppress dry, got {}", buf[0]);
+    assert!(
+        buf[0].abs() < 0.1,
+        "wet=1 should suppress dry, got {}",
+        buf[0]
+    );
 }
 
 // ─────────────── Decay tail ───────────────
@@ -98,8 +112,14 @@ fn damping_reduces_high_frequency_content() {
     let bright_buf = render_to_buffer(&mut bright, 0.5, SR);
     let dark_buf = render_to_buffer(&mut dark, 0.5, SR);
 
-    let bright_diff: f32 = bright_buf.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>();
-    let dark_diff: f32 = dark_buf.windows(2).map(|w| (w[1] - w[0]).abs()).sum::<f32>();
+    let bright_diff: f32 = bright_buf
+        .windows(2)
+        .map(|w| (w[1] - w[0]).abs())
+        .sum::<f32>();
+    let dark_diff: f32 = dark_buf
+        .windows(2)
+        .map(|w| (w[1] - w[0]).abs())
+        .sum::<f32>();
 
     assert!(
         dark_diff < bright_diff,
@@ -137,7 +157,10 @@ fn width_0_gives_mono_reverb() {
         sig.next(&ctx(0));
     }
     let (l, r) = sig.next_stereo(&ctx(500));
-    assert!((l - r).abs() < 1e-5, "width=0 should give L==R, got L={l} R={r}");
+    assert!(
+        (l - r).abs() < 1e-5,
+        "width=0 should give L==R, got L={l} R={r}"
+    );
 }
 
 // ─────────────── Bounded output ───────────────

@@ -13,15 +13,15 @@ use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 ///
 /// Returns a receiver that emits `()` each time the file is modified.
 /// The watcher handle must be kept alive.
-pub fn watch_file(
-    path: &Path,
-) -> Result<(mpsc::Receiver<()>, RecommendedWatcher), notify::Error> {
+pub fn watch_file(path: &Path) -> Result<(mpsc::Receiver<()>, RecommendedWatcher), notify::Error> {
     let (tx, rx) = mpsc::channel();
 
     let mut watcher = RecommendedWatcher::new(
         move |res: Result<notify::Event, notify::Error>| {
-            if let Ok(event) = res && matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_)) {
-                    let _ = tx.send(());
+            if let Ok(event) = res
+                && matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_))
+            {
+                let _ = tx.send(());
             }
         },
         Config::default().with_poll_interval(Duration::from_millis(200)),

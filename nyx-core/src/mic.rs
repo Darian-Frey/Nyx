@@ -45,9 +45,7 @@ pub fn mic_with_buffer(buffer_size: usize) -> Result<(MicSignal, MicHandle), Mic
     use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 
     let host = cpal::default_host();
-    let device = host
-        .default_input_device()
-        .ok_or(MicError::NoInputDevice)?;
+    let device = host.default_input_device().ok_or(MicError::NoInputDevice)?;
 
     let config = device
         .default_input_config()
@@ -74,10 +72,7 @@ pub fn mic_with_buffer(buffer_size: usize) -> Result<(MicSignal, MicHandle), Mic
         .play()
         .map_err(|e| MicError::PlayStream(e.to_string()))?;
 
-    Ok((
-        MicSignal { consumer },
-        MicHandle { _stream: stream },
-    ))
+    Ok((MicSignal { consumer }, MicHandle { _stream: stream }))
 }
 
 /// Handle for the mic input stream. Dropping this stops the input.

@@ -131,11 +131,21 @@ impl canvas::Program<SliderMessage> for HSliderCanvas {
         let pad = 4.0;
 
         let track = Path::line(Point::new(pad, y), Point::new(bounds.width - pad, y));
-        frame.stroke(&track, Stroke::default().with_color(NyxColors::TRACK).with_width(4.0));
+        frame.stroke(
+            &track,
+            Stroke::default()
+                .with_color(NyxColors::TRACK)
+                .with_width(4.0),
+        );
 
         let fill_x = pad + self.value * (bounds.width - 2.0 * pad);
         let fill = Path::line(Point::new(pad, y), Point::new(fill_x, y));
-        frame.stroke(&fill, Stroke::default().with_color(NyxColors::FILL).with_width(4.0));
+        frame.stroke(
+            &fill,
+            Stroke::default()
+                .with_color(NyxColors::FILL)
+                .with_width(4.0),
+        );
 
         let thumb = Path::circle(Point::new(fill_x, y), 6.0);
         frame.fill(&thumb, NyxColors::ACCENT);
@@ -217,8 +227,7 @@ impl canvas::Program<SliderMessage> for VSliderCanvas {
                 state.dragging = true;
                 let pad = 4.0;
                 // Inverted: top = 1.0, bottom = 0.0
-                let new_value =
-                    (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
+                let new_value = (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
                 (
                     canvas::event::Status::Captured,
                     Some(SliderMessage::Changed(new_value)),
@@ -230,8 +239,7 @@ impl canvas::Program<SliderMessage> for VSliderCanvas {
             }
             Event::Mouse(mouse::Event::CursorMoved { .. }) if state.dragging => {
                 let pad = 4.0;
-                let new_value =
-                    (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
+                let new_value = (1.0 - (pos.y - pad) / (bounds.height - 2.0 * pad)).clamp(0.0, 1.0);
                 (
                     canvas::event::Status::Captured,
                     Some(SliderMessage::Changed(new_value)),
@@ -254,11 +262,21 @@ impl canvas::Program<SliderMessage> for VSliderCanvas {
         let pad = 4.0;
 
         let track = Path::line(Point::new(x, pad), Point::new(x, bounds.height - pad));
-        frame.stroke(&track, Stroke::default().with_color(NyxColors::TRACK).with_width(4.0));
+        frame.stroke(
+            &track,
+            Stroke::default()
+                .with_color(NyxColors::TRACK)
+                .with_width(4.0),
+        );
 
         let fill_y = bounds.height - pad - self.value * (bounds.height - 2.0 * pad);
         let fill = Path::line(Point::new(x, bounds.height - pad), Point::new(x, fill_y));
-        frame.stroke(&fill, Stroke::default().with_color(NyxColors::FILL).with_width(4.0));
+        frame.stroke(
+            &fill,
+            Stroke::default()
+                .with_color(NyxColors::FILL)
+                .with_width(4.0),
+        );
 
         let thumb = Path::circle(Point::new(x, fill_y), 6.0);
         frame.fill(&thumb, NyxColors::ACCENT);
@@ -287,8 +305,18 @@ mod tests {
     use super::*;
     use iced::widget::canvas::Program;
 
-    const H_BOUNDS: Rectangle = Rectangle { x: 0.0, y: 0.0, width: 200.0, height: 24.0 };
-    const V_BOUNDS: Rectangle = Rectangle { x: 0.0, y: 0.0, width: 24.0, height: 200.0 };
+    const H_BOUNDS: Rectangle = Rectangle {
+        x: 0.0,
+        y: 0.0,
+        width: 200.0,
+        height: 24.0,
+    };
+    const V_BOUNDS: Rectangle = Rectangle {
+        x: 0.0,
+        y: 0.0,
+        width: 24.0,
+        height: 200.0,
+    };
 
     fn cursor_at(x: f32, y: f32) -> mouse::Cursor {
         mouse::Cursor::Available(Point::new(x, y))
@@ -303,7 +331,9 @@ mod tests {
     }
 
     fn move_to(x: f32, y: f32) -> Event {
-        Event::Mouse(mouse::Event::CursorMoved { position: Point::new(x, y) })
+        Event::Mouse(mouse::Event::CursorMoved {
+            position: Point::new(x, y),
+        })
     }
 
     // ─── HSlider ────────────────────────────────────────────────────
@@ -352,7 +382,12 @@ mod tests {
         let mut state = SliderInteraction::default();
 
         canvas.update(&mut state, press(), H_BOUNDS, cursor_at(50.0, 12.0));
-        let (_, msg) = canvas.update(&mut state, move_to(150.0, 12.0), H_BOUNDS, cursor_at(150.0, 12.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(150.0, 12.0),
+            H_BOUNDS,
+            cursor_at(150.0, 12.0),
+        );
         if let Some(SliderMessage::Changed(v)) = msg {
             assert!(v > 0.6, "drag to right should increase value, got {v}");
         } else {
@@ -374,7 +409,12 @@ mod tests {
     fn hslider_drag_without_press_ignored() {
         let canvas = HSliderCanvas { value: 0.5 };
         let mut state = SliderInteraction::default();
-        let (_, msg) = canvas.update(&mut state, move_to(50.0, 12.0), H_BOUNDS, cursor_at(50.0, 12.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(50.0, 12.0),
+            H_BOUNDS,
+            cursor_at(50.0, 12.0),
+        );
         assert!(msg.is_none());
     }
 
@@ -431,7 +471,12 @@ mod tests {
         let canvas = VSliderCanvas { value: 0.0 };
         let mut state = SliderInteraction::default();
         canvas.update(&mut state, press(), V_BOUNDS, cursor_at(12.0, 150.0));
-        let (_, msg) = canvas.update(&mut state, move_to(12.0, 50.0), V_BOUNDS, cursor_at(12.0, 50.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(12.0, 50.0),
+            V_BOUNDS,
+            cursor_at(12.0, 50.0),
+        );
         if let Some(SliderMessage::Changed(v)) = msg {
             assert!(v > 0.6, "drag up should increase, got {v}");
         } else {

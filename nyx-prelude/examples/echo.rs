@@ -46,10 +46,7 @@ fn main() {
         lead.next(ctx)
     };
 
-    let signal = voice
-        .delay(0.75)
-        .feedback(0.5)
-        .mix(0.45);
+    let signal = voice.delay(0.75).feedback(0.5).mix(0.45);
 
     play(signal).unwrap();
 }

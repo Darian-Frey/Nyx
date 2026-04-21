@@ -1,7 +1,7 @@
 //! Sprint 1 — Probability & conditional sequencer modifiers.
 
 use nyx_core::AudioContext;
-use nyx_seq::{clock, Euclid, Pattern, Sequence};
+use nyx_seq::{Euclid, Pattern, Sequence, clock};
 
 const SR: f32 = 44100.0;
 

@@ -5,7 +5,7 @@
 use std::sync::{Arc, Mutex};
 
 use spectrum_analyzer::windows::{blackman_harris_4term, hann_window};
-use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit};
+use spectrum_analyzer::{FrequencyLimit, samples_fft_to_spectrum};
 
 use crate::signal::{AudioContext, Signal};
 

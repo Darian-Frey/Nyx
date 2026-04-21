@@ -11,10 +11,10 @@ use nyx_prelude::*;
 fn main() {
     // Cm7 chord: C4, Eb4, G4, Bb4. Slight detuning on each voice.
     let chord = osc::sine(Note::C4.to_freq())
-        .add(osc::sine(Note::C4.to_freq() * 1.0007))  // detuned C
-        .add(osc::sine(Note::from_midi(63).to_freq()))  // Eb4
+        .add(osc::sine(Note::C4.to_freq() * 1.0007)) // detuned C
+        .add(osc::sine(Note::from_midi(63).to_freq())) // Eb4
         .add(osc::sine(Note::G4.to_freq()))
-        .add(osc::sine(Note::from_midi(70).to_freq()))  // Bb4
+        .add(osc::sine(Note::from_midi(70).to_freq())) // Bb4
         .amp(0.08);
 
     // Slow amplitude LFO for gentle swelling.

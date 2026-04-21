@@ -41,8 +41,8 @@
 //! `confidence = 1.0 − d'(τ*)` is the "clarity": 1.0 is a perfect
 //! periodic signal, 0.0 is pure noise.
 
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use crate::signal::{AudioContext, Signal};
 

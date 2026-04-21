@@ -1,6 +1,6 @@
 //! Sprint 3 — Compressor + Sidechain tests.
 
-use nyx_core::{osc, render_to_buffer, AudioContext, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, SignalExt, osc, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -81,7 +81,10 @@ fn compressor_makeup_gain_boosts_output() {
     let pb = render_to_buffer(&mut plain, 0.5, SR);
     let bb = render_to_buffer(&mut boosted, 0.5, SR);
 
-    assert!(rms(&bb) > rms(&pb) * 1.5, "makeup +6dB should roughly 2x rms");
+    assert!(
+        rms(&bb) > rms(&pb) * 1.5,
+        "makeup +6dB should roughly 2x rms"
+    );
 }
 
 #[test]
@@ -98,10 +101,16 @@ fn compressor_output_is_finite_and_bounded() {
 fn compressor_infinite_ratio_acts_as_limiter() {
     // ratio = inf → hard limiter. Peak should be close to threshold amp.
     // -6 dB ≈ 0.501 linear. Allow some overshoot during attack.
-    let mut sig = osc::sine(440.0).compress(-6.0, f32::INFINITY).attack_ms(0.5);
+    let mut sig = osc::sine(440.0)
+        .compress(-6.0, f32::INFINITY)
+        .attack_ms(0.5);
     let buf = render_to_buffer(&mut sig, 0.5, SR);
     // Ignore first 2000 samples while envelope settles.
-    let steady_peak = buf.iter().skip(2000).map(|s| s.abs()).fold(0.0_f32, f32::max);
+    let steady_peak = buf
+        .iter()
+        .skip(2000)
+        .map(|s| s.abs())
+        .fold(0.0_f32, f32::max);
     assert!(
         steady_peak < 0.7,
         "limiter should clamp to ~threshold: peak={steady_peak}"
@@ -110,7 +119,10 @@ fn compressor_infinite_ratio_acts_as_limiter() {
 
 #[test]
 fn compressor_does_not_allocate() {
-    let mut sig = osc::sine(440.0).compress(-12.0, 4.0).attack_ms(5.0).release_ms(100.0);
+    let mut sig = osc::sine(440.0)
+        .compress(-12.0, 4.0)
+        .attack_ms(5.0)
+        .release_ms(100.0);
     let c = ctx(0);
     for _ in 0..10 {
         sig.next(&c);
@@ -163,7 +175,10 @@ impl Signal for PulseTrigger {
 #[test]
 fn sidechain_ducks_with_trigger() {
     // Sustained sine, ducked by periodic kick pulses.
-    let trigger = PulseTrigger { period: 22050, amp: 1.0 }; // pulse every 0.5s
+    let trigger = PulseTrigger {
+        period: 22050,
+        amp: 1.0,
+    }; // pulse every 0.5s
     let mut sig = osc::sine(440.0)
         .sidechain(trigger, -30.0, 20.0)
         .attack_ms(1.0)
@@ -205,7 +220,9 @@ fn sidechain_ratio_one_is_near_transparent() {
     let mut clean = osc::sine(440.0).amp(0.3);
     let ref_buf = render_to_buffer(&mut clean, 0.5, SR);
 
-    let diff: f32 = buf.iter().zip(ref_buf.iter())
+    let diff: f32 = buf
+        .iter()
+        .zip(ref_buf.iter())
         .skip(500)
         .map(|(a, b)| (a - b).abs())
         .sum();
@@ -234,7 +251,9 @@ fn sidechain_silent_trigger_passes_source() {
 #[test]
 fn sidechain_does_not_allocate() {
     let trigger = osc::sine(2.0);
-    let mut sig = osc::sine(440.0).sidechain(trigger, -20.0, 8.0).attack_ms(1.0);
+    let mut sig = osc::sine(440.0)
+        .sidechain(trigger, -20.0, 8.0)
+        .attack_ms(1.0);
     let c = ctx(0);
     for _ in 0..10 {
         sig.next(&c);

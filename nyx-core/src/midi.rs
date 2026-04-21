@@ -3,10 +3,10 @@
 //! Gated behind the `midi` feature. Uses `midir` for cross-platform
 //! low-latency MIDI input.
 
-use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, Ordering};
 
-use rtrb::{Producer, Consumer, RingBuffer};
+use rtrb::{Consumer, Producer, RingBuffer};
 
 use crate::signal::{AudioContext, Signal};
 
@@ -79,10 +79,7 @@ impl MidiReceiver {
 /// Create a MIDI event bridge (SPSC ring buffer).
 pub fn midi_bridge(capacity: usize) -> (MidiSender, MidiReceiver) {
     let (producer, consumer) = RingBuffer::new(capacity);
-    (
-        MidiSender { producer },
-        MidiReceiver { consumer },
-    )
+    (MidiSender { producer }, MidiReceiver { consumer })
 }
 
 // ─── CC Map ─────────────────────────────────────────────────────────
@@ -200,8 +197,8 @@ pub fn open_midi_input() -> Result<(MidiReceiver, MidiConnection), MidiError> {
 pub fn open_midi_input_named(
     name_filter: Option<&str>,
 ) -> Result<(MidiReceiver, MidiConnection), MidiError> {
-    let midi_in = midir::MidiInput::new("nyx-midi-in")
-        .map_err(|e| MidiError::Init(e.to_string()))?;
+    let midi_in =
+        midir::MidiInput::new("nyx-midi-in").map_err(|e| MidiError::Init(e.to_string()))?;
 
     let ports = midi_in.ports();
     if ports.is_empty() {
@@ -211,12 +208,7 @@ pub fn open_midi_input_named(
     let port = if let Some(filter) = name_filter {
         ports
             .iter()
-            .find(|p| {
-                midi_in
-                    .port_name(p)
-                    .unwrap_or_default()
-                    .contains(filter)
-            })
+            .find(|p| midi_in.port_name(p).unwrap_or_default().contains(filter))
             .ok_or(MidiError::NoPort)?
     } else {
         &ports[0]
@@ -237,7 +229,12 @@ pub fn open_midi_input_named(
         )
         .map_err(|e| MidiError::Connect(e.to_string()))?;
 
-    Ok((receiver, MidiConnection { _connection: connection }))
+    Ok((
+        receiver,
+        MidiConnection {
+            _connection: connection,
+        },
+    ))
 }
 
 /// A live MIDI connection. MIDI input stops when this is dropped.

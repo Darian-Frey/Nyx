@@ -6,8 +6,8 @@
 //! **Note:** `dyn Signal` is not serialisable. Only the `SynthPatch` config
 //! is saved/loaded. The actual signal chain is rebuilt from the patch.
 
-use nyx_core::{AudioContext, Signal};
 use crate::envelope::{self, Adsr};
+use nyx_core::{AudioContext, Signal};
 use serde::{Deserialize, Serialize};
 
 /// Oscillator waveform selection for the SubSynth.
@@ -64,18 +64,15 @@ impl Default for SynthPatch {
 impl SynthPatch {
     /// Save this patch to a TOML file.
     pub fn save(&self, path: &str) -> Result<(), PatchError> {
-        let toml_str = toml::to_string_pretty(self)
-            .map_err(|e| PatchError::Serialize(e.to_string()))?;
-        std::fs::write(path, toml_str)
-            .map_err(|e| PatchError::Io(e.to_string()))
+        let toml_str =
+            toml::to_string_pretty(self).map_err(|e| PatchError::Serialize(e.to_string()))?;
+        std::fs::write(path, toml_str).map_err(|e| PatchError::Io(e.to_string()))
     }
 
     /// Load a patch from a TOML file.
     pub fn load(path: &str) -> Result<Self, PatchError> {
-        let contents = std::fs::read_to_string(path)
-            .map_err(|e| PatchError::Io(e.to_string()))?;
-        toml::from_str(&contents)
-            .map_err(|e| PatchError::Deserialize(e.to_string()))
+        let contents = std::fs::read_to_string(path).map_err(|e| PatchError::Io(e.to_string()))?;
+        toml::from_str(&contents).map_err(|e| PatchError::Deserialize(e.to_string()))
     }
 
     /// Build a `SubSynth` from this patch.
@@ -154,7 +151,11 @@ impl SubSynth {
             OscShape::Sine => (self.osc_phase * std::f32::consts::TAU).sin(),
             OscShape::Saw => 2.0 * self.osc_phase - 1.0,
             OscShape::Square => {
-                if self.osc_phase < 0.5 { 1.0 } else { -1.0 }
+                if self.osc_phase < 0.5 {
+                    1.0
+                } else {
+                    -1.0
+                }
             }
             OscShape::Triangle => {
                 if self.osc_phase < 0.5 {

@@ -86,10 +86,7 @@ impl Sample {
                     .map(|s| s as f32 / max)
                     .collect()
             }
-            hound::SampleFormat::Float => reader
-                .samples::<f32>()
-                .filter_map(|s| s.ok())
-                .collect(),
+            hound::SampleFormat::Float => reader.samples::<f32>().filter_map(|s| s.ok()).collect(),
         };
 
         // Downmix stereo/multi-channel to mono by averaging.
@@ -230,10 +227,7 @@ impl<PR: Signal> Sampler<PR> {
     /// Reset playback to the start of the sample (or loop region).
     /// Use to retrigger a one-shot voice for a new note-on event.
     pub fn trigger(&mut self) {
-        self.position = self
-            .loop_region
-            .map(|(s, _)| s)
-            .unwrap_or(0.0);
+        self.position = self.loop_region.map(|(s, _)| s).unwrap_or(0.0);
         self.direction = 1.0;
         self.finished = false;
     }
@@ -250,8 +244,7 @@ impl<PR: Signal> Sampler<PR> {
     }
 
     fn effective_bounds(&self) -> (f64, f64) {
-        self.loop_region
-            .unwrap_or((0.0, self.data.len() as f64))
+        self.loop_region.unwrap_or((0.0, self.data.len() as f64))
     }
 
     fn read_interpolated(&self) -> f32 {

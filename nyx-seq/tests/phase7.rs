@@ -1,7 +1,5 @@
 use nyx_core::AudioContext;
-use nyx_seq::{
-    clock, Euclid, Note, Pattern, Scale, Sequence, seeded,
-};
+use nyx_seq::{Euclid, Note, Pattern, Scale, Sequence, clock, seeded};
 
 const SR: f32 = 44100.0;
 
@@ -127,7 +125,10 @@ fn euclid_3_8_is_tresillo() {
     assert_eq!(p.hits(), 3);
     // Classic tresillo: x..x..x.
     let steps: Vec<bool> = p.steps().to_vec();
-    assert_eq!(steps, vec![true, false, false, true, false, false, true, false]);
+    assert_eq!(
+        steps,
+        vec![true, false, false, true, false, false, true, false]
+    );
 }
 
 #[test]

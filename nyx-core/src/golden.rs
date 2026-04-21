@@ -52,8 +52,9 @@ pub fn assert_golden(signal: &mut dyn Signal, config: &GoldenTest) {
     if should_update || !golden_path.exists() {
         std::fs::create_dir_all(&golden_dir).expect("failed to create tests/golden/");
         let bytes: Vec<u8> = buf.iter().flat_map(|s| s.to_le_bytes()).collect();
-        std::fs::write(&golden_path, bytes)
-            .unwrap_or_else(|e| panic!("failed to write golden file {}: {e}", golden_path.display()));
+        std::fs::write(&golden_path, bytes).unwrap_or_else(|e| {
+            panic!("failed to write golden file {}: {e}", golden_path.display())
+        });
         eprintln!(
             "nyx golden: wrote {} samples to {}",
             buf.len(),

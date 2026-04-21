@@ -1,6 +1,6 @@
 //! Sprint 2 — State-variable filter tests.
 
-use nyx_core::{render_to_buffer, AudioContext, DenyAllocGuard, FilterExt, Signal};
+use nyx_core::{AudioContext, DenyAllocGuard, FilterExt, Signal, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -54,7 +54,10 @@ fn svf_lp_attenuates_high_frequencies() {
     let _ = render_to_buffer(&mut sig, 0.05, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms = rms(&buf);
-    assert!(rms < 0.05, "10 kHz through 500 Hz LP should attenuate, rms={rms}");
+    assert!(
+        rms < 0.05,
+        "10 kHz through 500 Hz LP should attenuate, rms={rms}"
+    );
 }
 
 // ─────────────── High-pass ───────────────
@@ -74,7 +77,10 @@ fn svf_hp_attenuates_low_frequencies() {
     let _ = render_to_buffer(&mut sig, 0.05, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms = rms(&buf);
-    assert!(rms < 0.05, "100 Hz through 5 kHz HP should attenuate, rms={rms}");
+    assert!(
+        rms < 0.05,
+        "100 Hz through 5 kHz HP should attenuate, rms={rms}"
+    );
 }
 
 // ─────────────── Band-pass ───────────────
@@ -96,7 +102,10 @@ fn svf_bp_rejects_far_from_centre() {
     let _ = render_to_buffer(&mut sig, 0.05, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms = rms(&buf);
-    assert!(rms < 0.2, "off-centre sine should be attenuated by BP, rms={rms}");
+    assert!(
+        rms < 0.2,
+        "off-centre sine should be attenuated by BP, rms={rms}"
+    );
 }
 
 // ─────────────── Notch ───────────────
@@ -108,7 +117,10 @@ fn svf_notch_rejects_at_centre() {
     let _ = render_to_buffer(&mut sig, 0.05, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms = rms(&buf);
-    assert!(rms < 0.2, "sine at notch centre should be rejected, rms={rms}");
+    assert!(
+        rms < 0.2,
+        "sine at notch centre should be rejected, rms={rms}"
+    );
 }
 
 #[test]
@@ -118,7 +130,10 @@ fn svf_notch_passes_far_from_centre() {
     let _ = render_to_buffer(&mut sig, 0.05, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms = rms(&buf);
-    assert!(rms > 0.5, "sine well away from notch should pass, rms={rms}");
+    assert!(
+        rms > 0.5,
+        "sine well away from notch should pass, rms={rms}"
+    );
 }
 
 // ─────────────── Modulation ───────────────

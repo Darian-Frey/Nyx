@@ -1,6 +1,6 @@
 //! Sprint 1 — Delay line + feedback tests.
 
-use nyx_core::{render_to_buffer, AudioContext, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, SignalExt, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -96,10 +96,7 @@ fn full_mix_is_pure_delayed() {
 fn feedback_produces_multiple_echoes() {
     // Half-feedback, full-wet. Feed an impulse; expect ~N echoes where
     // echo_n amplitude ≈ 0.5^n (modulo smoothing).
-    let mut sig = Impulse::new()
-        .delay(0.01)
-        .mix(1.0)
-        .feedback(0.5);
+    let mut sig = Impulse::new().delay(0.01).mix(1.0).feedback(0.5);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
 
     // Look at echoes at 1x, 2x, 3x the delay time.
@@ -120,17 +117,17 @@ fn feedback_produces_multiple_echoes() {
     // Echo ratio should approximately match feedback gain.
     assert!(peak_2 < peak_1, "2nd echo weaker than 1st");
     assert!(peak_3 < peak_2, "3rd echo weaker than 2nd");
-    assert!(peak_2 > peak_1 * 0.2, "2nd echo not degraded too fast: {peak_1} -> {peak_2}");
+    assert!(
+        peak_2 > peak_1 * 0.2,
+        "2nd echo not degraded too fast: {peak_1} -> {peak_2}"
+    );
 }
 
 #[test]
 fn feedback_clamps_at_boundary() {
     // User sets feedback to 2.0 — we must clamp internally so output
     // stays bounded rather than exploding.
-    let mut sig = Impulse::new()
-        .delay(0.005)
-        .mix(1.0)
-        .feedback(2.0);
+    let mut sig = Impulse::new().delay(0.005).mix(1.0).feedback(2.0);
     let buf = render_to_buffer(&mut sig, 0.2, SR);
 
     let peak_abs = buf.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
@@ -142,17 +139,17 @@ fn feedback_clamps_at_boundary() {
 
 #[test]
 fn feedback_zero_gives_single_echo() {
-    let mut sig = Impulse::new()
-        .delay(0.005)
-        .mix(1.0)
-        .feedback(0.0);
+    let mut sig = Impulse::new().delay(0.005).mix(1.0).feedback(0.0);
     let buf = render_to_buffer(&mut sig, 0.03, SR);
 
     // After the single echo, everything should decay to ~0.
     let delay_samples = (0.005 * SR) as usize;
     let late = &buf[3 * delay_samples..];
     let late_peak = late.iter().map(|s| s.abs()).fold(0.0_f32, f32::max);
-    assert!(late_peak < 0.1, "no feedback should mean single echo, late peak={late_peak}");
+    assert!(
+        late_peak < 0.1,
+        "no feedback should mean single echo, late peak={late_peak}"
+    );
 }
 
 // ─────────────────────── Modulation / smoothing ───────────────────────

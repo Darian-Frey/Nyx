@@ -28,7 +28,7 @@ fn main() {
     // Visually steps through every bar so you can verify the full range.
     let sweep = automation::automation(|t| {
         let phase = (t / 8.0).fract(); // 0..1 over 8 seconds
-        40.0 * 400.0_f32.powf(phase)   // 40 Hz → 40 * 400 = 16000 Hz
+        40.0 * 400.0_f32.powf(phase) // 40 Hz → 40 * 400 = 16000 Hz
     });
     let sig = osc::sine(sweep).amp(0.3);
 
@@ -66,11 +66,7 @@ fn spawn_bars(mut commands: Commands) {
         let x = -WINDOW_W / 2.0 + bar_w * (i as f32 + 0.5);
         // Colour interpolation: blue at low freqs → pink at high freqs.
         let t = i as f32 / BAR_COUNT as f32;
-        let color = Color::srgb(
-            0.0 + t * 1.0,
-            0.4 - t * 0.1,
-            0.8 - t * 0.3,
-        );
+        let color = Color::srgb(0.0 + t * 1.0, 0.4 - t * 0.1, 0.8 - t * 0.3);
         commands.spawn((
             SpriteBundle {
                 sprite: Sprite {
@@ -92,7 +88,11 @@ fn update_bars(audio: Res<Audio>, mut query: Query<(&Bar, &mut Transform, &mut S
         return;
     }
 
-    let max_mag = bins.iter().map(|b| b.magnitude).fold(0.0_f32, f32::max).max(1e-10);
+    let max_mag = bins
+        .iter()
+        .map(|b| b.magnitude)
+        .fold(0.0_f32, f32::max)
+        .max(1e-10);
     let total_bins = bins.len();
 
     for (bar, mut xf, mut sprite) in &mut query {

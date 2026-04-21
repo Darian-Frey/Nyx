@@ -1,6 +1,6 @@
 //! Sprint 2 — Wavetable oscillator tests.
 
-use nyx_core::{render_to_buffer, AudioContext, DenyAllocGuard, Signal, Wavetable};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, Wavetable, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -12,7 +12,9 @@ fn ctx(tick: u64) -> AudioContext {
 }
 
 fn zero_crossings(buf: &[f32]) -> usize {
-    buf.windows(2).filter(|w| w[0].signum() != w[1].signum()).count()
+    buf.windows(2)
+        .filter(|w| w[0].signum() != w[1].signum())
+        .count()
 }
 
 // ─────────────── Construction ───────────────

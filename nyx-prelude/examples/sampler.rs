@@ -17,9 +17,8 @@ fn main() {
     let kick = Sample::from_buffer(kick_buf, 44100.0).unwrap();
 
     // 2. Build one sampler voice per beat slot.
-    let mut voices: Vec<Sampler<ConstSignal>> = (0..4)
-        .map(|_| Sampler::new(kick.clone()))
-        .collect();
+    let mut voices: Vec<Sampler<ConstSignal>> =
+        (0..4).map(|_| Sampler::new(kick.clone())).collect();
 
     // Pitch per step (semitones relative to native): 0, +7, 0, +5
     let pitches = [1.0_f32, 1.5, 1.0, 1.335];

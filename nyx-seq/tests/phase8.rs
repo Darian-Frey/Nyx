@@ -1,8 +1,6 @@
 use nyx_core::render_to_buffer;
 use nyx_seq::inst;
-use nyx_seq::{
-    Chord, Note, SynthPatch, OscShape, FilterType,
-};
+use nyx_seq::{Chord, FilterType, Note, OscShape, SynthPatch};
 
 const SR: f32 = 44100.0;
 
@@ -22,7 +20,10 @@ fn kick_silent_without_trigger() {
     let mut k = inst::kick();
     let buf = render_to_buffer(&mut k, 0.1, SR);
     let rms: f32 = (buf.iter().map(|s| s * s).sum::<f32>() / buf.len() as f32).sqrt();
-    assert!(rms < 0.001, "kick should be silent without trigger, rms={rms}");
+    assert!(
+        rms < 0.001,
+        "kick should be silent without trigger, rms={rms}"
+    );
 }
 
 #[test]
@@ -72,8 +73,12 @@ fn drone_produces_continuous_sound() {
     let quarter = buf.len() / 4;
     let rms_start: f32 =
         (buf[..quarter].iter().map(|s| s * s).sum::<f32>() / quarter as f32).sqrt();
-    let rms_end: f32 =
-        (buf[buf.len() - quarter..].iter().map(|s| s * s).sum::<f32>() / quarter as f32).sqrt();
+    let rms_end: f32 = (buf[buf.len() - quarter..]
+        .iter()
+        .map(|s| s * s)
+        .sum::<f32>()
+        / quarter as f32)
+        .sqrt();
     assert!(rms_start > 0.1, "drone start too quiet: {rms_start}");
     assert!(rms_end > 0.1, "drone end too quiet: {rms_end}");
 }
@@ -85,8 +90,12 @@ fn riser_amplitude_increases() {
     let quarter = buf.len() / 4;
     let rms_start: f32 =
         (buf[..quarter].iter().map(|s| s * s).sum::<f32>() / quarter as f32).sqrt();
-    let rms_end: f32 =
-        (buf[buf.len() - quarter..].iter().map(|s| s * s).sum::<f32>() / quarter as f32).sqrt();
+    let rms_end: f32 = (buf[buf.len() - quarter..]
+        .iter()
+        .map(|s| s * s)
+        .sum::<f32>()
+        / quarter as f32)
+        .sqrt();
     assert!(
         rms_end > rms_start * 2.0,
         "riser should get louder: start={rms_start}, end={rms_end}"
@@ -109,7 +118,10 @@ fn pad_silent_without_trigger() {
     let mut p = inst::pad(chord);
     let buf = render_to_buffer(&mut p, 0.1, SR);
     let rms: f32 = (buf.iter().map(|s| s * s).sum::<f32>() / buf.len() as f32).sqrt();
-    assert!(rms < 0.001, "pad should be silent without trigger, rms={rms}");
+    assert!(
+        rms < 0.001,
+        "pad should be silent without trigger, rms={rms}"
+    );
 }
 
 // ===================== SubSynth tests =====================
@@ -157,14 +169,26 @@ fn subsynth_release_decays() {
 
     // Last quarter should be nearly silent.
     let quarter = buf.len() / 4;
-    let rms_end: f32 =
-        (buf[buf.len() - quarter..].iter().map(|s| s * s).sum::<f32>() / quarter as f32).sqrt();
-    assert!(rms_end < 0.05, "should decay after release, rms_end={rms_end}");
+    let rms_end: f32 = (buf[buf.len() - quarter..]
+        .iter()
+        .map(|s| s * s)
+        .sum::<f32>()
+        / quarter as f32)
+        .sqrt();
+    assert!(
+        rms_end < 0.05,
+        "should decay after release, rms_end={rms_end}"
+    );
 }
 
 #[test]
 fn subsynth_all_osc_shapes() {
-    for shape in [OscShape::Sine, OscShape::Saw, OscShape::Square, OscShape::Triangle] {
+    for shape in [
+        OscShape::Sine,
+        OscShape::Saw,
+        OscShape::Square,
+        OscShape::Triangle,
+    ] {
         let patch = SynthPatch {
             osc_shape: shape,
             ..Default::default()

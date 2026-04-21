@@ -114,10 +114,8 @@ fn main() {
     let mut bass_env = envelope::adsr(0.001, 0.08, 0.0, 0.04);
     // Off-beat trance bass pattern: silent on beats (0, 4, 8, 12), hit on everything else.
     let bass_pattern: [bool; 16] = [
-        false, true, true, true,
-        false, true, true, true,
-        false, true, true, true,
-        false, true, true, true,
+        false, true, true, true, false, true, true, true, false, true, true, true, false, true,
+        true, true,
     ];
 
     // ─── Noise riser state ──────────────────────────────────────────
@@ -213,10 +211,7 @@ fn main() {
 
             // ARP — every 16th, cycling through current chord tones.
             // Octave rises through the bar for upward motion.
-            if matches!(
-                sec,
-                Section::Drop | Section::Breakdown | Section::FinalDrop
-            ) {
+            if matches!(sec, Section::Drop | Section::Breakdown | Section::FinalDrop) {
                 let intervals = chord_intervals[chord_idx];
                 let note_idx = step % 4;
                 let root = chord_roots[chord_idx];
@@ -292,30 +287,14 @@ fn main() {
         // ─── Section mix ───────────────────────────────────────────
         let mix = match sec {
             Section::Intro => pad_sample * 0.90 + hats * 0.35,
-            Section::Build => {
-                pad_sample * 0.70 + k * 0.85 + bass_out * 0.55 + hats * 0.60 + riser
-            }
-            Section::Drop => {
-                pad_sample * 0.30
-                    + k
-                    + s
-                    + hats
-                    + bass_out
-                    + arp_out
-                    + lead_out
-            }
+            Section::Build => pad_sample * 0.70 + k * 0.85 + bass_out * 0.55 + hats * 0.60 + riser,
+            Section::Drop => pad_sample * 0.30 + k + s + hats + bass_out + arp_out + lead_out,
             Section::Breakdown => pad_sample * 1.0 + arp_out * 0.45 + hats * 0.15,
             Section::FinalBuild => {
                 pad_sample * 0.40 + k + s * 0.9 + hats * 0.7 + bass_out * 0.8 + riser
             }
             Section::FinalDrop => {
-                pad_sample * 0.25
-                    + k
-                    + s
-                    + hats
-                    + bass_out * 1.1
-                    + arp_out * 1.1
-                    + lead_out * 1.2
+                pad_sample * 0.25 + k + s + hats + bass_out * 1.1 + arp_out * 1.1 + lead_out * 1.2
             }
         };
 

@@ -72,9 +72,8 @@ impl Scale {
         let mut best_dist = 12_i16;
         for &interval in self.intervals {
             let scale_pc = (self.root + interval) % 12;
-            let dist = ((pc as i16 - scale_pc as i16 + 12) % 12).min(
-                (scale_pc as i16 - pc as i16 + 12) % 12,
-            );
+            let dist = ((pc as i16 - scale_pc as i16 + 12) % 12)
+                .min((scale_pc as i16 - pc as i16 + 12) % 12);
             if dist < best_dist {
                 best_dist = dist;
                 best = scale_pc;

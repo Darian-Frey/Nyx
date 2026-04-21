@@ -60,10 +60,7 @@ pub trait AutomationExt: Signal + Sized {
     /// osc::sine(440).follow(|t| (t / 2.0).min(1.0))
     /// ```
     fn follow<F: FnMut(f32) -> f32 + Send>(self, func: F) -> Follow<Self, F> {
-        Follow {
-            source: self,
-            func,
-        }
+        Follow { source: self, func }
     }
 }
 

@@ -17,14 +17,11 @@ fn main() {
     let pan_lfo = osc::sine(0.25);
 
     // Saw bass, panned by the LFO.
-    let bass = osc::saw(55.0)
-        .lowpass(800.0, 1.5)
-        .amp(0.35)
-        .pan(pan_lfo);
+    let bass = osc::saw(55.0).lowpass(800.0, 1.5).amp(0.35).pan(pan_lfo);
 
     // Pluck chord stacked with Haas widening for width.
     let plucks = pluck(Note::C4.to_freq(), 0.995)
-        .add(pluck(Note::from_midi(63).to_freq(), 0.995))   // Eb4
+        .add(pluck(Note::from_midi(63).to_freq(), 0.995)) // Eb4
         .add(pluck(Note::G4.to_freq(), 0.995))
         .amp(0.15)
         .haas(18.0);

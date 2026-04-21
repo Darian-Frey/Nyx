@@ -9,9 +9,7 @@ fn main() {
     let swell = osc::sine(0.15).amp(0.3).offset(0.4);
 
     // Pink noise → lowpass (warmth) → gain swell.
-    let wind = osc::noise::pink(7)
-        .lowpass(1800.0, 0.5)
-        .amp(swell);
+    let wind = osc::noise::pink(7).lowpass(1800.0, 0.5).amp(swell);
 
     play(wind).unwrap();
 }

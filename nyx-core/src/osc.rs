@@ -52,12 +52,7 @@ impl<S: Signal> Sine<S> {
         modulator: M,
         index: I,
     ) -> crate::fm::FmOp<S, M, I::Signal> {
-        crate::fm::FmOp::from_sine_parts(
-            self.freq,
-            modulator,
-            index.into_param(),
-            self.phase,
-        )
+        crate::fm::FmOp::from_sine_parts(self.freq, modulator, index.into_param(), self.phase)
     }
 }
 

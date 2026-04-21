@@ -55,8 +55,5 @@ impl BridgeReceiver {
 /// at once. 64 is a sensible default for most use cases.
 pub fn bridge(capacity: usize) -> (BridgeSender, BridgeReceiver) {
     let (producer, consumer) = RingBuffer::new(capacity);
-    (
-        BridgeSender { producer },
-        BridgeReceiver { consumer },
-    )
+    (BridgeSender { producer }, BridgeReceiver { consumer })
 }

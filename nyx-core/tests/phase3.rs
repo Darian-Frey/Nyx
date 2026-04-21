@@ -1,12 +1,10 @@
 #[global_allocator]
 static ALLOC: nyx_core::GuardedAllocator = nyx_core::GuardedAllocator;
 
-use nyx_core::golden::{assert_golden, GoldenTest};
-use nyx_core::{
-    render_to_buffer, AudioContext, DenyAllocGuard, FilterExt, Signal, SignalExt,
-};
-use nyx_core::osc;
 use nyx_core::dynamics;
+use nyx_core::golden::{GoldenTest, assert_golden};
+use nyx_core::osc;
+use nyx_core::{AudioContext, DenyAllocGuard, FilterExt, Signal, SignalExt, render_to_buffer};
 
 fn ctx(tick: u64) -> AudioContext {
     AudioContext {
@@ -76,14 +74,20 @@ fn saw_starts_at_minus_one() {
     let mut sig = osc::saw(440.0);
     let out = sig.next(&ctx(0));
     // phase=0 → 2*0 - 1 = -1
-    assert!((out - (-1.0)).abs() < 1e-6, "saw should start at -1, got {out}");
+    assert!(
+        (out - (-1.0)).abs() < 1e-6,
+        "saw should start at -1, got {out}"
+    );
 }
 
 #[test]
 fn square_starts_at_one() {
     let mut sig = osc::square(440.0);
     let out = sig.next(&ctx(0));
-    assert!((out - 1.0).abs() < 1e-6, "square should start at 1, got {out}");
+    assert!(
+        (out - 1.0).abs() < 1e-6,
+        "square should start at 1, got {out}"
+    );
 }
 
 #[test]
@@ -92,7 +96,10 @@ fn square_is_bipolar() {
     let buf = render_to_buffer(&mut sig, 0.01, SR);
     let has_pos = buf.iter().any(|&s| s > 0.5);
     let has_neg = buf.iter().any(|&s| s < -0.5);
-    assert!(has_pos && has_neg, "square should have both +1 and -1 regions");
+    assert!(
+        has_pos && has_neg,
+        "square should have both +1 and -1 regions"
+    );
 }
 
 #[test]
@@ -112,7 +119,10 @@ fn triangle_starts_at_minus_one() {
     let mut sig = osc::triangle(440.0);
     let out = sig.next(&ctx(0));
     // phase=0 → 4*0 - 1 = -1
-    assert!((out - (-1.0)).abs() < 1e-6, "triangle should start at -1, got {out}");
+    assert!(
+        (out - (-1.0)).abs() < 1e-6,
+        "triangle should start at -1, got {out}"
+    );
 }
 
 // ===================== Frequency modulation =====================
@@ -188,7 +198,10 @@ fn lowpass_attenuates_high_frequency() {
     let _ = render_to_buffer(&mut sig, 0.1, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms: f32 = (buf.iter().map(|s| s * s).sum::<f32>() / buf.len() as f32).sqrt();
-    assert!(rms < 0.01, "10kHz through 200Hz LP should be attenuated, rms={rms}");
+    assert!(
+        rms < 0.01,
+        "10kHz through 200Hz LP should be attenuated, rms={rms}"
+    );
 }
 
 #[test]
@@ -208,7 +221,10 @@ fn highpass_attenuates_low_frequency() {
     let _ = render_to_buffer(&mut sig, 0.1, SR);
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     let rms: f32 = (buf.iter().map(|s| s * s).sum::<f32>() / buf.len() as f32).sqrt();
-    assert!(rms < 0.01, "100Hz through 5kHz HP should be attenuated, rms={rms}");
+    assert!(
+        rms < 0.01,
+        "100Hz through 5kHz HP should be attenuated, rms={rms}"
+    );
 }
 
 #[test]
@@ -360,10 +376,7 @@ fn golden_white_noise() {
 
 #[test]
 fn fluent_chain_compiles_and_runs() {
-    let mut sig = osc::saw(220.0)
-        .lowpass(800.0, 0.707)
-        .amp(0.5)
-        .clip(0.8);
+    let mut sig = osc::saw(220.0).lowpass(800.0, 0.707).amp(0.5).clip(0.8);
     let buf = render_to_buffer(&mut sig, 0.01, SR);
     assert!(!buf.is_empty());
     for &s in &buf {

@@ -1,6 +1,6 @@
 //! Sprint 1 — Karplus-Strong pluck tests.
 
-use nyx_core::{pluck, render_to_buffer, AudioContext, DenyAllocGuard, Signal};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, pluck, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -80,8 +80,7 @@ fn long_decay_sustains_longer_than_short() {
     let short_tail = &short_buf[short_buf.len() - window..];
     let long_tail = &long_buf[long_buf.len() - window..];
 
-    let short_rms: f32 =
-        (short_tail.iter().map(|s| s * s).sum::<f32>() / window as f32).sqrt();
+    let short_rms: f32 = (short_tail.iter().map(|s| s * s).sum::<f32>() / window as f32).sqrt();
     let long_rms: f32 = (long_tail.iter().map(|s| s * s).sum::<f32>() / window as f32).sqrt();
 
     assert!(
@@ -114,10 +113,7 @@ fn output_stays_bounded() {
     let mut sig = pluck(440.0, 0.99);
     let buf = render_to_buffer(&mut sig, 0.5, SR);
     for (i, &s) in buf.iter().enumerate() {
-        assert!(
-            (-1.5..=1.5).contains(&s),
-            "sample {i} out of bounds: {s}"
-        );
+        assert!((-1.5..=1.5).contains(&s), "sample {i} out of bounds: {s}");
     }
 }
 

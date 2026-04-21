@@ -2,7 +2,7 @@
 
 #![allow(clippy::float_cmp)]
 
-use nyx_core::{render_to_buffer, AudioContext, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, SignalExt, render_to_buffer};
 
 const SR: f32 = 44100.0;
 

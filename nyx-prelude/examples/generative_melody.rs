@@ -13,7 +13,7 @@ fn main() {
     let rhythm = Euclid::generate(5, 8);
     let mut rhythm_seq = Sequence::new(rhythm, 0.25);
 
-    let low = Note::from_midi(57);  // A3
+    let low = Note::from_midi(57); // A3
     let high = Note::from_midi(81); // A5
 
     let mut synth = SynthPatch::default().build();

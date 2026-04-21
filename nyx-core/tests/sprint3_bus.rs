@@ -1,6 +1,6 @@
 //! Sprint 3 — Bus / mixer tests.
 
-use nyx_core::{osc, render_to_buffer, AudioContext, Bus, DenyAllocGuard, Signal, SignalExt};
+use nyx_core::{AudioContext, Bus, DenyAllocGuard, Signal, SignalExt, osc, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -106,7 +106,10 @@ fn bus_preserves_stereo_from_panned_sources() {
     }
     assert!(sum_l > 10.0, "L should have content, sum_l={sum_l}");
     assert!(sum_r > 10.0, "R should have content, sum_r={sum_r}");
-    assert!(diff > 10.0, "L and R should differ (stereo content), diff={diff}");
+    assert!(
+        diff > 10.0,
+        "L and R should differ (stereo content), diff={diff}"
+    );
 }
 
 #[test]

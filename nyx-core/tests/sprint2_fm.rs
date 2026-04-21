@@ -1,6 +1,6 @@
 //! Sprint 2 — FM operator tests.
 
-use nyx_core::{fm_op, osc, render_to_buffer, AudioContext, DenyAllocGuard, Signal};
+use nyx_core::{AudioContext, DenyAllocGuard, Signal, fm_op, osc, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -17,7 +17,9 @@ fn rms(buf: &[f32]) -> f32 {
 
 /// Count sign changes — a rough proxy for spectral complexity.
 fn zero_crossings(buf: &[f32]) -> usize {
-    buf.windows(2).filter(|w| w[0].signum() != w[1].signum()).count()
+    buf.windows(2)
+        .filter(|w| w[0].signum() != w[1].signum())
+        .count()
 }
 
 // ─────────────── Basic carrier behaviour ───────────────

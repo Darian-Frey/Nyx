@@ -19,8 +19,8 @@
 //!
 //! Run: cargo run -p nyx-iced --example dubstep --release
 
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use iced::widget::{column, container, row, text};
 use iced::{Element, Length, Subscription, Theme};
@@ -32,8 +32,8 @@ use nyx_core::{
 use nyx_iced::{Knob, KnobMessage, KnobState, OscilloscopeCanvas, SpectrumCanvas};
 use nyx_seq::inst::{HiHat, Kick, Snare};
 use nyx_seq::{
-    clock, envelope, inst, seeded, Adsr, Chord, ChordType, Clock, ClockState, Euclid, Note,
-    Pattern, Scale, Sequence, SubSynth, SynthPatch,
+    Adsr, Chord, ChordType, Clock, ClockState, Euclid, Note, Pattern, Scale, Sequence, SubSynth,
+    SynthPatch, clock, envelope, inst, seeded,
 };
 
 const BPM: f32 = 140.0;
@@ -149,8 +149,8 @@ impl DubstepTrack {
             false, false, false, true, false, false, false, false, // kick on 3.75 for swagger
         ]);
         let snare_pat = Pattern::new(&[
-            false, false, false, false, false, false, false, false,
-            true, false, false, false, false, false, false, false, // beat 3
+            false, false, false, false, false, false, false, false, true, false, false, false,
+            false, false, false, false, // beat 3
         ]);
         // Euclidean hats — 11 in 16 gives a driving groove
         let hat_pat = Euclid::generate(11, 16);
@@ -352,8 +352,8 @@ impl Signal for DubstepTrack {
 
         // Wobble bass LFO — rate depends on section
         let wob_rate = match section {
-            SEC_DROP1 => 2.0,  // half-note wobble at 140bpm → 2Hz-ish
-            SEC_DROP2 => 4.0,  // faster quarter-note wobble
+            SEC_DROP1 => 2.0, // half-note wobble at 140bpm → 2Hz-ish
+            SEC_DROP2 => 4.0, // faster quarter-note wobble
             SEC_BREAKDOWN => 0.5,
             _ => 0.0, // no wobble outside drops
         };
@@ -424,8 +424,7 @@ impl Signal for DubstepTrack {
         // Drums
         let kick_sample = self.kick.next(ctx);
         let snare_sample = self.snare.next(ctx);
-        let hat_sample =
-            self.hat_c.next(ctx) * 0.4 + self.hat_o.next(ctx) * 0.3;
+        let hat_sample = self.hat_c.next(ctx) * 0.4 + self.hat_o.next(ctx) * 0.3;
 
         // Lead (SubSynth) — rendered unconditionally so envelope runs
         let lead_sample = self.lead.next(ctx) * if section == SEC_DROP2 { 1.0 } else { 0.0 };
@@ -452,16 +451,12 @@ impl Signal for DubstepTrack {
         // ─── Mix ──────────────────────────────────────────────────────
         let mix = match section {
             SEC_INTRO => pad_sample + hat_sample * 0.4,
-            SEC_BUILD1 => {
-                kick_sample * 0.8 + snare_sample * 0.5 + hat_sample * 0.7 + riser_sample
-            }
+            SEC_BUILD1 => kick_sample * 0.8 + snare_sample * 0.5 + hat_sample * 0.7 + riser_sample,
             SEC_DROP1 => {
                 kick_sample + snare_sample + hat_sample * 0.8 + wob_sample + sub_sample * 0.8
             }
             SEC_BREAKDOWN => pad_sample * 0.8 + sub_sample * 0.4 + hat_sample * 0.3,
-            SEC_BUILD2 => {
-                kick_sample + snare_sample + hat_sample + riser_sample * 1.4
-            }
+            SEC_BUILD2 => kick_sample + snare_sample + hat_sample + riser_sample * 1.4,
             SEC_DROP2 => {
                 kick_sample
                     + snare_sample

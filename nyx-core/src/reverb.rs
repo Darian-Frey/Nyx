@@ -153,8 +153,7 @@ impl<A: Signal> Freeverb<A> {
         let combs_l: [Comb; 8] = std::array::from_fn(|i| Comb::new(COMB_LENGTHS[i]));
         let combs_r: [Comb; 8] =
             std::array::from_fn(|i| Comb::new(COMB_LENGTHS[i] + STEREO_SPREAD));
-        let allpasses_l: [Allpass; 4] =
-            std::array::from_fn(|i| Allpass::new(ALLPASS_LENGTHS[i]));
+        let allpasses_l: [Allpass; 4] = std::array::from_fn(|i| Allpass::new(ALLPASS_LENGTHS[i]));
         let allpasses_r: [Allpass; 4] =
             std::array::from_fn(|i| Allpass::new(ALLPASS_LENGTHS[i] + STEREO_SPREAD));
 

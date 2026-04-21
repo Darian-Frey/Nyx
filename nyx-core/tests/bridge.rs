@@ -1,4 +1,4 @@
-use nyx_core::{bridge, AudioCommand};
+use nyx_core::{AudioCommand, bridge};
 
 #[test]
 fn send_and_drain_commands() {

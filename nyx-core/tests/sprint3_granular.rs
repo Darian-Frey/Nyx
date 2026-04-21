@@ -1,8 +1,6 @@
 //! Sprint 3 — Granular synthesis tests.
 
-use nyx_core::{
-    render_to_buffer, AudioContext, DenyAllocGuard, Granular, Sample, Signal,
-};
+use nyx_core::{AudioContext, DenyAllocGuard, Granular, Sample, Signal, render_to_buffer};
 
 const SR: f32 = 44100.0;
 
@@ -42,7 +40,10 @@ fn produces_sound_with_defaults() {
     let mut g = Granular::new(sine_sample(440.0, 0.5));
     let buf = render_to_buffer(&mut g, 0.5, SR);
     let r = rms(&buf);
-    assert!(r > 0.01, "default config should produce audible output, rms={r}");
+    assert!(
+        r > 0.01,
+        "default config should produce audible output, rms={r}"
+    );
     for (i, &s) in buf.iter().enumerate() {
         assert!(s.is_finite(), "non-finite at {i}: {s}");
     }
@@ -53,7 +54,10 @@ fn silent_sample_yields_silence() {
     let mut g = Granular::new(silent_sample()).density(40.0);
     let buf = render_to_buffer(&mut g, 0.3, SR);
     let p = peak(&buf);
-    assert!(p < 1e-6, "silent source should give silent granulation, peak={p}");
+    assert!(
+        p < 1e-6,
+        "silent source should give silent granulation, peak={p}"
+    );
 }
 
 #[test]
@@ -97,7 +101,10 @@ fn output_is_bounded() {
         .amp(1.0);
     let buf = render_to_buffer(&mut g, 0.5, SR);
     let p = peak(&buf);
-    assert!(p.is_finite() && p < 10.0, "granular output blew up, peak={p}");
+    assert!(
+        p.is_finite() && p < 10.0,
+        "granular output blew up, peak={p}"
+    );
 }
 
 #[test]
@@ -112,7 +119,10 @@ fn pan_spread_creates_stereo_difference() {
         let (l, r) = g.next_stereo(&ctx(tick));
         diff += (l - r).abs();
     }
-    assert!(diff > 5.0, "pan_spread=1.0 should yield stereo diff, got {diff}");
+    assert!(
+        diff > 5.0,
+        "pan_spread=1.0 should yield stereo diff, got {diff}"
+    );
 }
 
 #[test]
@@ -172,7 +182,10 @@ fn different_seeds_diverge() {
     let ba = render_to_buffer(&mut a, 0.3, SR);
     let bb = render_to_buffer(&mut b, 0.3, SR);
     let diff: f32 = ba.iter().zip(bb.iter()).map(|(x, y)| (x - y).abs()).sum();
-    assert!(diff > 1.0, "different seeds should diverge, sum diff={diff}");
+    assert!(
+        diff > 1.0,
+        "different seeds should diverge, sum diff={diff}"
+    );
 }
 
 #[test]

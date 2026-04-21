@@ -61,12 +61,7 @@ pub struct Svf<S: Signal, C: Signal, Q: Signal> {
 }
 
 impl<S: Signal, C: Signal, Q: Signal> Svf<S, C, Q> {
-    pub(crate) fn new(
-        source: S,
-        cutoff: Param<C>,
-        q: Param<Q>,
-        mode: SvfMode,
-    ) -> Self {
+    pub(crate) fn new(source: S, cutoff: Param<C>, q: Param<Q>, mode: SvfMode) -> Self {
         Svf {
             source,
             cutoff,
@@ -82,10 +77,7 @@ impl<S: Signal, C: Signal, Q: Signal> Signal for Svf<S, C, Q> {
     fn next(&mut self, ctx: &AudioContext) -> f32 {
         // Sanitise inputs. Cutoff clamped to [20 Hz, Nyquist × 0.45]
         // (leaving a margin below Nyquist for numerical stability).
-        let cutoff = self
-            .cutoff
-            .next(ctx)
-            .clamp(20.0, ctx.sample_rate * 0.45);
+        let cutoff = self.cutoff.next(ctx).clamp(20.0, ctx.sample_rate * 0.45);
         let q = self.q.next(ctx).max(0.5);
 
         // Precompute ZDF coefficients — cheap trig per sample, but the

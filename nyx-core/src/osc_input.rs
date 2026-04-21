@@ -3,8 +3,8 @@
 //! Gated behind the `osc` feature. Listens on a UDP port and forwards
 //! OSC messages to the audio thread via a lock-free bridge.
 
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use crate::signal::{AudioContext, Signal};
 
@@ -108,10 +108,10 @@ pub fn osc_listen(
 ) -> Result<OscListener, OscError> {
     use std::net::UdpSocket;
 
-    let socket = UdpSocket::bind(addr)
-        .map_err(|e| OscError::Bind(e.to_string()))?;
+    let socket = UdpSocket::bind(addr).map_err(|e| OscError::Bind(e.to_string()))?;
     // Non-blocking would be complex; use a dedicated thread.
-    let socket_clone = socket.try_clone()
+    let socket_clone = socket
+        .try_clone()
         .map_err(|e| OscError::Bind(e.to_string()))?;
 
     let running = Arc::new(std::sync::atomic::AtomicBool::new(true));
@@ -141,10 +141,7 @@ pub fn osc_listen(
 }
 
 #[cfg(feature = "osc")]
-fn dispatch_packet(
-    packet: &rosc::OscPacket,
-    mappings: &[(String, OscParamWriter)],
-) {
+fn dispatch_packet(packet: &rosc::OscPacket, mappings: &[(String, OscParamWriter)]) {
     match packet {
         rosc::OscPacket::Message(msg) => {
             for (addr, writer) in mappings {

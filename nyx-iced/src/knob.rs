@@ -208,7 +208,8 @@ mod tests {
     fn press_outside_bounds_ignored() {
         let canvas = KnobCanvas { value: 0.5 };
         let mut state = KnobInteraction::default();
-        let (status, msg) = canvas.update(&mut state, press_left(), BOUNDS, cursor_at(200.0, 200.0));
+        let (status, msg) =
+            canvas.update(&mut state, press_left(), BOUNDS, cursor_at(200.0, 200.0));
         assert!(matches!(status, canvas::event::Status::Ignored));
         assert!(msg.is_none());
     }
@@ -231,7 +232,12 @@ mod tests {
         canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 60.0));
 
         // Drag up to y=40 (dy = 20, upward)
-        let (status, msg) = canvas.update(&mut state, move_to(50.0, 40.0), BOUNDS, cursor_at(50.0, 40.0));
+        let (status, msg) = canvas.update(
+            &mut state,
+            move_to(50.0, 40.0),
+            BOUNDS,
+            cursor_at(50.0, 40.0),
+        );
 
         assert!(matches!(status, canvas::event::Status::Captured));
         match msg {
@@ -248,7 +254,12 @@ mod tests {
         let mut state = KnobInteraction::default();
 
         canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 40.0));
-        let (_, msg) = canvas.update(&mut state, move_to(50.0, 60.0), BOUNDS, cursor_at(50.0, 60.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(50.0, 60.0),
+            BOUNDS,
+            cursor_at(50.0, 60.0),
+        );
 
         match msg {
             Some(KnobMessage::Changed(v)) => {
@@ -263,7 +274,12 @@ mod tests {
         let canvas = KnobCanvas { value: 0.5 };
         let mut state = KnobInteraction::default();
         // No press first — just move
-        let (_, msg) = canvas.update(&mut state, move_to(50.0, 40.0), BOUNDS, cursor_at(50.0, 40.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(50.0, 40.0),
+            BOUNDS,
+            cursor_at(50.0, 40.0),
+        );
         assert!(msg.is_none());
     }
 
@@ -286,10 +302,18 @@ mod tests {
         let mut state = KnobInteraction::default();
 
         canvas.update(&mut state, press_left(), BOUNDS, cursor_at(50.0, 90.0));
-        let (_, msg) = canvas.update(&mut state, move_to(50.0, 10.0), BOUNDS, cursor_at(50.0, 10.0));
+        let (_, msg) = canvas.update(
+            &mut state,
+            move_to(50.0, 10.0),
+            BOUNDS,
+            cursor_at(50.0, 10.0),
+        );
 
         if let Some(KnobMessage::Changed(v)) = msg {
-            assert!((0.0..=1.0).contains(&v), "value must stay in [0, 1], got {v}");
+            assert!(
+                (0.0..=1.0).contains(&v),
+                "value must stay in [0, 1], got {v}"
+            );
         }
     }
 
@@ -300,7 +324,10 @@ mod tests {
 
         // Not dragging, not over bounds → default
         let i = canvas.mouse_interaction(&state, BOUNDS, cursor_at(200.0, 200.0));
-        assert!(matches!(i, mouse::Interaction::None | mouse::Interaction::Idle));
+        assert!(matches!(
+            i,
+            mouse::Interaction::None | mouse::Interaction::Idle
+        ));
 
         // Not dragging, over bounds → Grab
         let i = canvas.mouse_interaction(&state, BOUNDS, cursor_at(50.0, 50.0));

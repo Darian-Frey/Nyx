@@ -22,7 +22,11 @@ fn main() {
 
     // Build the two-operator FM graph.
     let modulator = osc::sine(mod_param.signal(1.0));
-    let op = fm_op(carrier_param.signal(1.0), modulator, index_param.signal(1.0));
+    let op = fm_op(
+        carrier_param.signal(1.0),
+        modulator,
+        index_param.signal(1.0),
+    );
 
     // Note generator state, running on the audio thread alongside the
     // envelope that shapes both amplitude and modulation index.
@@ -41,25 +45,24 @@ fn main() {
     let mod_writer = mod_param.writer();
     let index_writer = index_param.writer();
 
-    let signal = op
-        .amp(move |ctx: &nyx_prelude::AudioContext| {
-            // Advance clock, trigger on each new beat.
-            let state = clk.tick(ctx);
-            let beat = state.beat as i32;
-            if beat != last_beat {
-                last_beat = beat;
-                let note = rng.next_note_in(&scale, low, high);
-                carrier_writer.set(note.to_freq());
-                mod_writer.set(note.to_freq() * 2.0);
-                idx_env.trigger();
-                amp_env.trigger();
-            }
-            // The amp closure returns the amplitude for this sample:
-            // AM(ctx) = amp_env(ctx), and separately updates the index
-            // atomic so the FM operator reads a fresh value next sample.
-            index_writer.set(idx_env.next(ctx) * 3.5);
-            amp_env.next(ctx) * 0.4
-        });
+    let signal = op.amp(move |ctx: &nyx_prelude::AudioContext| {
+        // Advance clock, trigger on each new beat.
+        let state = clk.tick(ctx);
+        let beat = state.beat as i32;
+        if beat != last_beat {
+            last_beat = beat;
+            let note = rng.next_note_in(&scale, low, high);
+            carrier_writer.set(note.to_freq());
+            mod_writer.set(note.to_freq() * 2.0);
+            idx_env.trigger();
+            amp_env.trigger();
+        }
+        // The amp closure returns the amplitude for this sample:
+        // AM(ctx) = amp_env(ctx), and separately updates the index
+        // atomic so the FM operator reads a fresh value next sample.
+        index_writer.set(idx_env.next(ctx) * 3.5);
+        amp_env.next(ctx) * 0.4
+    });
 
     play(signal).unwrap();
 }

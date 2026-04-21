@@ -4,8 +4,8 @@ use iced::mouse;
 use iced::widget::canvas::{self, Canvas, Frame, Path};
 use iced::{Element, Length, Point, Rectangle, Size, Theme};
 
+use crate::theme::{NyxColors, lerp_color};
 use nyx_core::{FreqBin, SpectrumHandle};
-use crate::theme::{lerp_color, NyxColors};
 
 /// A spectrum analyser canvas that renders FFT magnitude bins.
 pub struct SpectrumCanvas {
@@ -107,7 +107,11 @@ impl<'a> canvas::Program<()> for SpectrumProgram<'a> {
             let x = i as f32 * bar_width + gap / 2.0;
             let y = bounds.height - bar_height;
 
-            let color = lerp_color(NyxColors::SPECTRUM_LOW, NyxColors::SPECTRUM_HIGH, normalized);
+            let color = lerp_color(
+                NyxColors::SPECTRUM_LOW,
+                NyxColors::SPECTRUM_HIGH,
+                normalized,
+            );
             let bar = Path::rectangle(
                 Point::new(x, y),
                 Size::new((bar_width - gap).max(1.0), bar_height),

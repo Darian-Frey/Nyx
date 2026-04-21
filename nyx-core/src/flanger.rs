@@ -138,6 +138,9 @@ impl<A: Signal> Signal for Flanger<A> {
     fn next_stereo(&mut self, ctx: &AudioContext) -> (f32, f32) {
         let (dry, wet_l, wet_r) = self.tick(ctx);
         let dry_m = 1.0 - self.mix;
-        (dry * dry_m + wet_l * self.mix, dry * dry_m + wet_r * self.mix)
+        (
+            dry * dry_m + wet_l * self.mix,
+            dry * dry_m + wet_r * self.mix,
+        )
     }
 }

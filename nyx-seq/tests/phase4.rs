@@ -1,7 +1,7 @@
 use nyx_core::{AudioContext, Signal, render_to_buffer};
+use nyx_seq::automation::{self, AutomationExt};
 use nyx_seq::clock::{self, Clock};
 use nyx_seq::envelope::{self, Stage};
-use nyx_seq::automation::{self, AutomationExt};
 
 const SR: f32 = 44100.0;
 
@@ -204,10 +204,7 @@ fn adsr_release_reaches_zero() {
     for tick in 500..(500 + release_samples as u64) {
         val = env.next(&ctx(tick));
     }
-    assert!(
-        val.abs() < 0.05,
-        "release should reach ~0.0, got {val}"
-    );
+    assert!(val.abs() < 0.05, "release should reach ~0.0, got {val}");
     assert_eq!(env.stage(), Stage::Idle);
 }
 

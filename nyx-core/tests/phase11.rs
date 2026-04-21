@@ -39,12 +39,18 @@ fn hotswap_crossfade_transitions() {
     let mut last = 0.0;
     for tick in 1..500 {
         let v = hs.next(&ctx(tick));
-        assert!(v >= last - 1e-6, "should be monotonically rising during crossfade");
+        assert!(
+            v >= last - 1e-6,
+            "should be monotonically rising during crossfade"
+        );
         last = v;
     }
 
     // After crossfade completes, should be at ~1.0.
-    assert!((last - 1.0).abs() < 0.01, "should converge to 1.0, got {last}");
+    assert!(
+        (last - 1.0).abs() < 0.01,
+        "should converge to 1.0, got {last}"
+    );
     assert!(!hs.is_crossfading());
 }
 
@@ -54,7 +60,10 @@ fn hotswap_instant_crossfade() {
     hs.swap(Box::new(Const(1.0)));
     // With 0ms crossfade, should jump immediately.
     let v = hs.next(&ctx(0));
-    assert!((v - 1.0).abs() < 1e-6, "instant crossfade should jump, got {v}");
+    assert!(
+        (v - 1.0).abs() < 1e-6,
+        "instant crossfade should jump, got {v}"
+    );
 }
 
 #[test]

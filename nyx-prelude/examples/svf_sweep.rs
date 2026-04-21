@@ -15,7 +15,7 @@ fn main() {
     let lfo = osc::sine(0.5).amp(3900.0).offset(4100.0);
 
     let signal = osc::noise::pink(42)
-        .svf_bp(lfo, 8.0)    // narrow resonant band-pass
+        .svf_bp(lfo, 8.0) // narrow resonant band-pass
         .amp(0.4);
 
     play(signal).unwrap();

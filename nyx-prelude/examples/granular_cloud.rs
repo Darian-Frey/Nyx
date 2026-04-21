@@ -21,9 +21,9 @@ fn main() {
     // raw material that the granulator will reassemble into a minutes-
     // long drone via overlapping jittered grains.
     let mut pad = osc::saw(Note::from_midi(36).to_freq()) // C2
-        .add(osc::saw(Note::from_midi(39).to_freq()))      // Eb2
-        .add(osc::saw(Note::from_midi(43).to_freq()))      // G2
-        .add(osc::saw(Note::from_midi(46).to_freq()))      // Bb2
+        .add(osc::saw(Note::from_midi(39).to_freq())) // Eb2
+        .add(osc::saw(Note::from_midi(43).to_freq())) // G2
+        .add(osc::saw(Note::from_midi(46).to_freq())) // Bb2
         .lowpass(900.0, 0.8)
         .amp(0.3)
         .soft_clip(1.0);
@@ -35,13 +35,13 @@ fn main() {
     // Wide position jitter + gentle pitch wobble + full stereo spread
     // converts the short source into a continuously-evolving texture.
     let cloud = Granular::new(source)
-        .grain_size(0.12)            // 120 ms grains — long and smooth
-        .density(45.0)               // lots of overlap → seamless cloud
+        .grain_size(0.12) // 120 ms grains — long and smooth
+        .density(45.0) // lots of overlap → seamless cloud
         .position(0.5)
-        .position_jitter(0.35)       // ±35 % of sample length
+        .position_jitter(0.35) // ±35 % of sample length
         .pitch(1.0)
-        .pitch_jitter(0.025)         // ±2.5 % pitch wobble = gentle chorus
-        .pan_spread(1.0)             // full stereo field
+        .pitch_jitter(0.025) // ±2.5 % pitch wobble = gentle chorus
+        .pan_spread(1.0) // full stereo field
         .amp(0.25)
         .amp_jitter(0.2)
         .seed(424242);

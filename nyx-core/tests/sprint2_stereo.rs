@@ -1,6 +1,6 @@
 //! Sprint 2 — Stereo refactor: trait default, Pan override, Haas widener.
 
-use nyx_core::{osc, AudioContext, DenyAllocGuard, HaasSide, Signal, SignalExt};
+use nyx_core::{AudioContext, DenyAllocGuard, HaasSide, Signal, SignalExt, osc};
 
 const SR: f32 = 44100.0;
 
@@ -22,7 +22,7 @@ fn mono_signal_default_duplicates_channels() {
         let mono = {
             // Rebuild a fresh sig each time so we can compare mono vs stereo.
             // Actually we need to advance both in parallel — reset isn't an option.
-            
+
             sig.next(&ctx(tick))
         };
         // For the same tick, next_stereo should give (mono, mono). But
@@ -34,7 +34,10 @@ fn mono_signal_default_duplicates_channels() {
             sig2.next(&ctx(0));
         }
         let (l, r) = sig2.next_stereo(&ctx(tick));
-        assert!((l - r).abs() < 1e-6, "mono default should give L==R at tick {tick}");
+        assert!(
+            (l - r).abs() < 1e-6,
+            "mono default should give L==R at tick {tick}"
+        );
         let _ = mono;
     }
 }
@@ -76,7 +79,10 @@ fn pan_hard_right() {
     let mut sig = (|_ctx: &AudioContext| 1.0_f32).pan(1.0);
     let (l, r) = sig.next_stereo(&ctx(0));
     assert!(l.abs() < 1e-6, "hard-right L should be 0, got {l}");
-    assert!((r - 1.0).abs() < 1e-6, "hard-right R should be 1.0, got {r}");
+    assert!(
+        (r - 1.0).abs() < 1e-6,
+        "hard-right R should be 1.0, got {r}"
+    );
 }
 
 #[test]
@@ -115,8 +121,14 @@ fn haas_right_produces_stereo_width() {
 
     // First sample: L gets the impulse, R gets silence (no delay yet).
     let (l0, r0) = sig.next_stereo(&ctx(0));
-    assert!((l0 - 1.0).abs() < 1e-6, "L should see impulse immediately, got {l0}");
-    assert!(r0.abs() < 1e-6, "R should be silent on first sample, got {r0}");
+    assert!(
+        (l0 - 1.0).abs() < 1e-6,
+        "L should see impulse immediately, got {l0}"
+    );
+    assert!(
+        r0.abs() < 1e-6,
+        "R should be silent on first sample, got {r0}"
+    );
 
     // Advance until the delay kicks in on R.
     let mut r_saw_impulse = false;
@@ -144,7 +156,10 @@ fn haas_left_side() {
     };
     let mut sig = impulse.haas_side(10.0, HaasSide::Left);
     let (l0, r0) = sig.next_stereo(&ctx(0));
-    assert!((r0 - 1.0).abs() < 1e-6, "R should see impulse first with HaasSide::Left");
+    assert!(
+        (r0 - 1.0).abs() < 1e-6,
+        "R should see impulse first with HaasSide::Left"
+    );
     assert!(l0.abs() < 1e-6, "L should be silent on first sample");
 }
 

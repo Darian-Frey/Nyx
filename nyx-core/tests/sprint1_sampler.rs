@@ -173,7 +173,10 @@ fn ping_pong_bounces() {
             decreased += 1;
         }
     }
-    assert!(increased > 0 && decreased > 0, "expected ping-pong: got {got:?}");
+    assert!(
+        increased > 0 && decreased > 0,
+        "expected ping-pong: got {got:?}"
+    );
 }
 
 // ─────────────── Arc sharing ───────────────

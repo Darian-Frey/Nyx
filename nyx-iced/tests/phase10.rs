@@ -1,9 +1,6 @@
-use nyx_iced::{
-    KnobState, SliderState, XYPadState, NyxColors,
-    OscilloscopeCanvas, SpectrumCanvas,
-};
-use nyx_iced::theme::lerp_color;
 use iced::Color;
+use nyx_iced::theme::lerp_color;
+use nyx_iced::{KnobState, NyxColors, OscilloscopeCanvas, SliderState, SpectrumCanvas, XYPadState};
 
 // ===================== Widget state tests =====================
 

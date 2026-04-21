@@ -1,9 +1,8 @@
-use nyx_core::{
-    render_to_buffer, AudioContext, Signal, SignalExt,
-    ScopeExt, InspectExt, SpectrumExt,
-    SpectrumConfig, WindowFn,
-};
 use nyx_core::osc;
+use nyx_core::{
+    AudioContext, InspectExt, ScopeExt, Signal, SignalExt, SpectrumConfig, SpectrumExt, WindowFn,
+    render_to_buffer,
+};
 
 const SR: f32 = 44100.0;
 
@@ -70,8 +69,8 @@ fn scope_available_count() {
 
 #[test]
 fn inspect_sees_every_sample() {
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     let count = Arc::new(AtomicU32::new(0));
     let count_clone = Arc::clone(&count);
@@ -102,8 +101,8 @@ fn inspect_passthrough_unchanged() {
 
 #[test]
 fn inspect_tracks_peak() {
-    use std::sync::atomic::{AtomicU32, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicU32, Ordering};
 
     // Use atomic u32 to store peak as bits (no f32 atomics).
     let peak_bits = Arc::new(AtomicU32::new(0));
@@ -132,10 +131,7 @@ fn inspect_tracks_peak() {
 
     let peak = f32::from_bits(peak_bits.load(Ordering::Relaxed));
     // Sine wave peak should be ~1.0.
-    assert!(
-        (peak - 1.0).abs() < 0.01,
-        "peak should be ~1.0, got {peak}"
-    );
+    assert!((peak - 1.0).abs() < 0.01, "peak should be ~1.0, got {peak}");
 }
 
 // ===================== Spectrum tests =====================
@@ -245,10 +241,7 @@ fn spectrum_bin_count() {
 
 #[test]
 fn scope_after_filter_chain() {
-    let (mut sig, mut handle) = osc::saw(220.0)
-        .amp(0.5)
-        .clip(0.8)
-        .scope(4096);
+    let (mut sig, mut handle) = osc::saw(220.0).amp(0.5).clip(0.8).scope(4096);
 
     let buf = render_to_buffer(&mut sig, 0.01, SR);
     assert!(!buf.is_empty());
@@ -257,6 +250,9 @@ fn scope_after_filter_chain() {
     let n = handle.read(&mut scope_buf);
     assert!(n > 0);
     for &s in &scope_buf[..n] {
-        assert!(s.abs() <= 0.8 + 1e-6, "clipped scope sample out of range: {s}");
+        assert!(
+            s.abs() <= 0.8 + 1e-6,
+            "clipped scope sample out of range: {s}"
+        );
     }
 }

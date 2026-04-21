@@ -15,7 +15,7 @@ use iced::{Element, Length, Subscription, Theme};
 use nyx_core::filter::FilterExt;
 use nyx_core::osc_input::OscParam;
 use nyx_core::{
-    Engine, Signal, ScopeExt, ScopeHandle, SignalExt, SpectrumConfig, SpectrumExt, SpectrumHandle,
+    Engine, ScopeExt, ScopeHandle, Signal, SignalExt, SpectrumConfig, SpectrumExt, SpectrumHandle,
 };
 use nyx_iced::{
     HSlider, Knob, KnobMessage, KnobState, OscilloscopeCanvas, SliderMessage, SliderState,

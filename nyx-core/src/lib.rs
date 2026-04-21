@@ -1,83 +1,79 @@
 mod alloc_guard;
-mod signal;
-pub mod param;
-mod voice;
 mod bridge;
-#[cfg(feature = "audio")]
-mod engine;
-pub mod golden;
-mod render;
-pub mod osc;
-pub mod filter;
-pub mod dynamics;
-pub mod scope;
-pub mod inspect;
-pub mod spectrum;
-pub mod midi;
-pub mod osc_input;
-pub mod mic;
-pub mod hotswap;
+pub mod bus;
+pub mod chorus;
+pub mod compressor;
 pub mod crush;
 pub mod delay;
-pub mod pluck;
-pub mod sample;
-pub mod svf;
-pub mod fm;
-pub mod wavetable;
-pub mod haas;
-pub mod reverb;
-pub mod chorus;
+pub mod dynamics;
+#[cfg(feature = "audio")]
+mod engine;
+pub mod filter;
 pub mod flanger;
-pub mod compressor;
-pub mod bus;
-pub mod pitch;
+pub mod fm;
+pub mod golden;
 pub mod granular;
+pub mod haas;
+pub mod hotswap;
+pub mod inspect;
+pub mod mic;
+pub mod midi;
+pub mod osc;
+pub mod osc_input;
+pub mod param;
+pub mod pitch;
+pub mod pluck;
+mod render;
+pub mod reverb;
+pub mod sample;
+pub mod scope;
+mod signal;
+pub mod spectrum;
+pub mod svf;
+mod voice;
 #[cfg(feature = "wav")]
 pub mod wav;
+pub mod wavetable;
 
-pub use signal::{
-    AudioContext, Signal, SignalExt,
-    Add, Amp, Clip, Mix, Mul, Offset, Pan, SoftClip,
-};
-pub use crush::{BitCrush, Downsample};
-pub use delay::{Delay, DELAY_MAX_SR, MAX_FEEDBACK};
-pub use pluck::{pluck, Pluck};
-pub use sample::{Sample, SampleError, Sampler, SamplerMode};
-pub use svf::{Svf, SvfMode};
-pub use fm::{fm_op, FmOp};
-pub use wavetable::{Wavetable, WavetableOsc};
-pub use haas::{Haas, HaasSide};
-pub use reverb::Freeverb;
-pub use chorus::Chorus;
-pub use flanger::Flanger;
-pub use compressor::{Compressor, Sidechain};
+pub use alloc_guard::{DenyAllocGuard, GuardedAllocator};
+pub use bridge::{AudioCommand, BridgeReceiver, BridgeSender, bridge};
 pub use bus::Bus;
-pub use pitch::{pitch, PitchConfig, PitchHandle, PitchTracker};
-pub use granular::Granular;
-pub use param::Param;
-pub use voice::VoicePool;
+pub use chorus::Chorus;
+pub use compressor::{Compressor, Sidechain};
+pub use crush::{BitCrush, Downsample};
+pub use delay::{DELAY_MAX_SR, Delay, MAX_FEEDBACK};
+pub use dynamics::{Gain, PeakLimiter, gain, peak_limiter};
 #[cfg(feature = "audio")]
 pub use engine::{Engine, EngineConfig, EngineError};
-pub use alloc_guard::{DenyAllocGuard, GuardedAllocator};
-pub use bridge::{bridge, AudioCommand, BridgeReceiver, BridgeSender};
-pub use render::render_to_buffer;
 pub use filter::{Biquad, FilterExt, FilterMode};
-pub use dynamics::{gain, peak_limiter, Gain, PeakLimiter};
-pub use scope::{Scope, ScopeExt, ScopeHandle};
+pub use flanger::Flanger;
+pub use fm::{FmOp, fm_op};
+pub use granular::Granular;
+pub use haas::{Haas, HaasSide};
 pub use inspect::{Inspect, InspectExt};
-pub use spectrum::{
-    FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn,
-};
+#[cfg(feature = "audio")]
+pub use mic::{MicError, MicHandle, MicSignal, mic, mic_with_buffer};
 pub use midi::{
-    parse_midi, midi_bridge, CcMap, CcSignal, CcWriter,
-    MidiEvent, MidiReceiver, MidiSender,
+    CcMap, CcSignal, CcWriter, MidiEvent, MidiReceiver, MidiSender, midi_bridge, parse_midi,
 };
 #[cfg(feature = "midi")]
-pub use midi::{open_midi_input, open_midi_input_named, MidiConnection, MidiError};
-pub use osc_input::{OscParam, OscParamWriter, OscSignal};
+pub use midi::{MidiConnection, MidiError, open_midi_input, open_midi_input_named};
 #[cfg(feature = "osc")]
-pub use osc_input::{osc_listen, OscListener, OscError};
-#[cfg(feature = "audio")]
-pub use mic::{mic, mic_with_buffer, MicHandle, MicError, MicSignal};
+pub use osc_input::{OscError, OscListener, osc_listen};
+pub use osc_input::{OscParam, OscParamWriter, OscSignal};
+pub use param::Param;
+pub use pitch::{PitchConfig, PitchHandle, PitchTracker, pitch};
+pub use pluck::{Pluck, pluck};
+pub use render::render_to_buffer;
+pub use reverb::Freeverb;
+pub use sample::{Sample, SampleError, Sampler, SamplerMode};
+pub use scope::{Scope, ScopeExt, ScopeHandle};
+pub use signal::{
+    Add, Amp, AudioContext, Clip, Mix, Mul, Offset, Pan, Signal, SignalExt, SoftClip,
+};
+pub use spectrum::{FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn};
+pub use svf::{Svf, SvfMode};
+pub use voice::VoicePool;
 #[cfg(feature = "wav")]
-pub use wav::{render_to_wav, render_to_wav_f32, WavError};
+pub use wav::{WavError, render_to_wav, render_to_wav_f32};
+pub use wavetable::{Wavetable, WavetableOsc};

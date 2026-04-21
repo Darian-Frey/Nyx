@@ -29,7 +29,8 @@ type SketchFn = unsafe fn() -> Box<dyn Signal>;
 ///
 /// Returns the path to the compiled `.so` / `.dylib` / `.dll`.
 pub fn compile_sketch(sketch_path: &Path, target_dir: &Path) -> Result<PathBuf, SketchError> {
-    let sketch_path = sketch_path.canonicalize()
+    let sketch_path = sketch_path
+        .canonicalize()
         .map_err(|e| SketchError::Io(format!("cannot resolve sketch path: {e}")))?;
 
     // The sketch is compiled as a standalone cdylib crate.
@@ -37,8 +38,7 @@ pub fn compile_sketch(sketch_path: &Path, target_dir: &Path) -> Result<PathBuf, 
     // then cargo build it.
     let sketch_dir = target_dir.join("nyx-sketch-build");
     let src_dir = sketch_dir.join("src");
-    std::fs::create_dir_all(&src_dir)
-        .map_err(|e| SketchError::Io(format!("mkdir: {e}")))?;
+    std::fs::create_dir_all(&src_dir).map_err(|e| SketchError::Io(format!("mkdir: {e}")))?;
 
     // Copy the sketch file as lib.rs
     std::fs::copy(&sketch_path, src_dir.join("lib.rs"))
@@ -94,10 +94,7 @@ nyx-prelude = {{ path = "{}/nyx-prelude", default-features = false }}
         "libnyx_sketch.so"
     };
 
-    let lib_path = sketch_dir
-        .join("target")
-        .join("release")
-        .join(lib_name);
+    let lib_path = sketch_dir.join("target").join("release").join(lib_name);
 
     if !lib_path.exists() {
         return Err(SketchError::Compile(format!(
@@ -123,8 +120,7 @@ pub fn load_sketch(lib_path: &Path) -> Result<(Box<dyn Signal>, LoadedSketch), S
         .map_err(|e| SketchError::Io(format!("copy lib for reload: {e}")))?;
 
     let library = unsafe {
-        Library::new(&unique_path)
-            .map_err(|e| SketchError::Load(format!("dlopen: {e}")))?
+        Library::new(&unique_path).map_err(|e| SketchError::Load(format!("dlopen: {e}")))?
     };
 
     let signal = unsafe {

@@ -6,9 +6,9 @@
 
 use nyx_core::{AudioContext, Signal};
 
+use crate::chord::Chord;
 use crate::envelope::{self, Adsr};
 use crate::note::Note;
-use crate::chord::Chord;
 
 // ─── Kick ───────────────────────────────────────────────────────────
 

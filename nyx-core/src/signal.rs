@@ -1,5 +1,5 @@
 use crate::crush::{BitCrush, Downsample};
-use crate::delay::{new_delay, Delay};
+use crate::delay::{Delay, new_delay};
 use crate::param::{ConstSignal, IntoParam, Param};
 
 /// Per-sample context passed to every `Signal::next` call.

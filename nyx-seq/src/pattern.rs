@@ -143,11 +143,7 @@ impl Pattern<f32> {
             return self.clone();
         }
         let axis = self.steps[0];
-        let steps = self
-            .steps
-            .iter()
-            .map(|&v| 2.0 * axis - v)
-            .collect();
+        let steps = self.steps.iter().map(|&v| 2.0 * axis - v).collect();
         Pattern { steps }
     }
 }

@@ -12,7 +12,7 @@ fn main() {
     let lfo = osc::sine(0.3).amp(500.0).offset(900.0);
     let signal = osc::saw(110.0)
         .lowpass(lfo, 0.707)
-        .crush(6, 0.25)  // 6-bit, quarter-rate
+        .crush(6, 0.25) // 6-bit, quarter-rate
         .amp(0.3);
 
     play(signal).unwrap();

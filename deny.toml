@@ -1,0 +1,81 @@
+# cargo-deny configuration for Nyx.
+#
+# https://embarkstudios.github.io/cargo-deny/checks/index.html
+#
+# Keep this file conservative — allowlists reflect the current
+# dependency tree. When a new transitive pulls in a license we
+# do not yet recognise, `cargo deny check` will flag it; add it
+# here after confirming it is compatible with Nyx's MIT OR
+# Apache-2.0 licensing.
+
+[graph]
+all-features = true
+
+# ─── Security advisories ──────────────────────────────────────────────
+
+[advisories]
+version = 2
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# Fail the build on any unmaintained crate advisory too, not just
+# critical vulns. Adjust to "warn" if noise becomes a problem.
+yanked = "deny"
+ignore = []
+
+# ─── License policy ───────────────────────────────────────────────────
+#
+# Nyx is dual-licensed MIT OR Apache-2.0. We accept permissive licenses
+# compatible with that — the list below was built from the current
+# workspace dependency tree.
+
+[licenses]
+version = 2
+confidence-threshold = 0.93
+allow = [
+    "MIT",
+    "MIT-0",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "0BSD",
+    "BSL-1.0",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "Unlicense",
+    # GPL options we explicitly accept because a MIT/Apache fallback is
+    # available in the dep's disjunctive license expression.
+    # cargo-deny picks a satisfying license automatically.
+    "LGPL-2.1-or-later",
+]
+
+# Ring / aws-lc-style crates sometimes surface as license = null with a
+# license-file. Declare the known-good ones here.
+[[licenses.clarify]]
+name = "ring"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
+
+# ─── Dependency bans ──────────────────────────────────────────────────
+
+[bans]
+multiple-versions = "warn"
+wildcards = "allow"
+highlight = "all"
+allow = []
+deny = []
+# Suppress noise from the huge fan-out of proc-macro / build-script deps.
+skip = []
+skip-tree = []
+
+# ─── Source registries ────────────────────────────────────────────────
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

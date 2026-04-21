@@ -68,7 +68,11 @@ fn bjorklund(k: usize, n: usize) -> Vec<bool> {
         }
 
         // Keep the unmerged middle groups
-        for group in groups.iter().take(groups.len() - remainder_count).skip(remainder_count) {
+        for group in groups
+            .iter()
+            .take(groups.len() - remainder_count)
+            .skip(remainder_count)
+        {
             new_groups.push(group.clone());
         }
 

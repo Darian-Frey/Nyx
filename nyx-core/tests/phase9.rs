@@ -1,8 +1,5 @@
-use nyx_core::{
-    AudioContext, Signal,
-    parse_midi, midi_bridge, CcMap, MidiEvent,
-};
 use nyx_core::osc_input::OscParam;
+use nyx_core::{AudioContext, CcMap, MidiEvent, Signal, midi_bridge, parse_midi};
 
 const SR: f32 = 44100.0;
 
@@ -20,7 +17,11 @@ fn parse_note_on() {
     let data = [0x90, 60, 100]; // channel 0, note 60, velocity 100
     let event = parse_midi(&data).unwrap();
     match event {
-        MidiEvent::NoteOn { channel, note, velocity } => {
+        MidiEvent::NoteOn {
+            channel,
+            note,
+            velocity,
+        } => {
             assert_eq!(channel, 0);
             assert_eq!(note, 60);
             assert_eq!(velocity, 100);
@@ -83,8 +84,16 @@ fn parse_unknown_status_returns_none() {
 #[test]
 fn midi_bridge_send_receive() {
     let (mut tx, mut rx) = midi_bridge(16);
-    tx.send(MidiEvent::NoteOn { channel: 0, note: 60, velocity: 100 });
-    tx.send(MidiEvent::ControlChange { channel: 0, cc: 1, value: 64 });
+    tx.send(MidiEvent::NoteOn {
+        channel: 0,
+        note: 60,
+        velocity: 100,
+    });
+    tx.send(MidiEvent::ControlChange {
+        channel: 0,
+        cc: 1,
+        value: 64,
+    });
 
     let events: Vec<_> = rx.drain().collect();
     assert_eq!(events.len(), 2);
@@ -142,10 +151,7 @@ fn cc_signal_smooths_value() {
     for tick in 100..10000 {
         v = sig.next(&ctx(tick));
     }
-    assert!(
-        (v - 1.0).abs() < 0.01,
-        "should converge to ~1.0, got {v}"
-    );
+    assert!((v - 1.0).abs() < 0.01, "should converge to ~1.0, got {v}");
 }
 
 #[test]

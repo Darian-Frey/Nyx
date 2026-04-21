@@ -5,42 +5,26 @@
 //! instruments, and everything else needed to sketch audio.
 
 // ─── nyx-core: types ─────────────────────────────────────────────────
-pub use nyx_core::{
-    AudioContext, Param, Signal, SignalExt, VoicePool,
-    Add, Amp, Clip, Mix, Mul, Offset, Pan, SoftClip,
-    BitCrush, Downsample,
-    Delay,
-    pluck, Pluck,
-    Sample, SampleError, Sampler, SamplerMode,
-    Biquad, FilterExt, FilterMode,
-    Svf, SvfMode,
-    fm_op, FmOp,
-    Wavetable, WavetableOsc,
-    Haas, HaasSide,
-    Freeverb,
-    Chorus, Flanger,
-    Compressor, Sidechain,
-    Bus,
-    PitchConfig, PitchHandle, PitchTracker,
-    Granular,
-    Gain, PeakLimiter,
-    Scope, ScopeExt, ScopeHandle,
-    Inspect, InspectExt,
-    FreqBin, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, WindowFn,
-    render_to_buffer,
-};
 pub use nyx_core::param::{ConstSignal, IntoParam};
+pub use nyx_core::{
+    Add, Amp, AudioContext, Biquad, BitCrush, Bus, Chorus, Clip, Compressor, Delay, Downsample,
+    FilterExt, FilterMode, Flanger, FmOp, Freeverb, FreqBin, Gain, Granular, Haas, HaasSide,
+    Inspect, InspectExt, Mix, Mul, Offset, Pan, Param, PeakLimiter, PitchConfig, PitchHandle,
+    PitchTracker, Pluck, Sample, SampleError, Sampler, SamplerMode, Scope, ScopeExt, ScopeHandle,
+    Sidechain, Signal, SignalExt, SoftClip, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle,
+    Svf, SvfMode, VoicePool, Wavetable, WavetableOsc, WindowFn, fm_op, pluck, render_to_buffer,
+};
 
 // ─── nyx-core: modules (for `osc::sine`, etc.) ───────────────────────
-pub use nyx_core::osc;
-pub use nyx_core::filter;
 pub use nyx_core::dynamics;
+pub use nyx_core::filter;
 pub use nyx_core::golden;
+pub use nyx_core::osc;
 
 // ─── nyx-core: bridge / alloc guard / hotswap ────────────────────────
-pub use nyx_core::{bridge, AudioCommand, BridgeReceiver, BridgeSender};
-pub use nyx_core::{DenyAllocGuard, GuardedAllocator};
 pub use nyx_core::hotswap;
+pub use nyx_core::{AudioCommand, BridgeReceiver, BridgeSender, bridge};
+pub use nyx_core::{DenyAllocGuard, GuardedAllocator};
 
 // ─── nyx-core: MIDI / OSC / mic (types are always exported) ──────────
 pub use nyx_core::midi;
@@ -50,35 +34,27 @@ pub use nyx_core::{CcMap, CcSignal, CcWriter, MidiEvent, MidiReceiver, MidiSende
 
 // ─── nyx-core: engine (audio feature only) ───────────────────────────
 #[cfg(feature = "audio")]
-pub use nyx_core::{Engine, EngineConfig, EngineError};
-#[cfg(feature = "audio")]
 pub use nyx_core::mic;
+#[cfg(feature = "audio")]
+pub use nyx_core::{Engine, EngineConfig, EngineError};
 
 // ─── nyx-core: WAV export (wav feature) ──────────────────────────────
 #[cfg(feature = "wav")]
-pub use nyx_core::{render_to_wav, render_to_wav_f32, WavError};
+pub use nyx_core::{WavError, render_to_wav, render_to_wav_f32};
 
 // ─── nyx-seq: types ──────────────────────────────────────────────────
 pub use nyx_seq::{
-    Clock, ClockState,
-    Adsr, Stage,
-    Automation, AutomationExt, Follow,
-    Note,
-    Scale, ScaleMode,
-    Chord, ChordType,
-    Pattern,
-    Euclid,
-    Rng,
-    Sequence, StepEvent,
-    SubSynth, SynthPatch, OscShape, FilterType, PatchError,
+    Adsr, Automation, AutomationExt, Chord, ChordType, Clock, ClockState, Euclid, FilterType,
+    Follow, Note, OscShape, PatchError, Pattern, Rng, Scale, ScaleMode, Sequence, Stage, StepEvent,
+    SubSynth, SynthPatch,
 };
 
 // ─── nyx-seq: modules (for `clock::clock`, `automation::automation`, etc.) ─
+pub use nyx_seq::automation;
 pub use nyx_seq::clock;
 pub use nyx_seq::envelope;
-pub use nyx_seq::automation;
 pub use nyx_seq::inst;
-pub use nyx_seq::{seeded};
+pub use nyx_seq::seeded;
 
 /// Start playing a signal on the default audio output device.
 ///

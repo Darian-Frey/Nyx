@@ -2,7 +2,7 @@
 
 #![cfg(feature = "wav")]
 
-use nyx_core::{render_to_wav, render_to_wav_f32, AudioContext, Signal, WavError};
+use nyx_core::{AudioContext, Signal, WavError, render_to_wav, render_to_wav_f32};
 
 const SR: f32 = 44100.0;
 
@@ -109,11 +109,7 @@ fn clipping_clamps_positive_overdrive() {
     assert_eq!(spec.bits_per_sample, 16);
 
     let mut reader = reader;
-    let max = reader
-        .samples::<i16>()
-        .map(|s| s.unwrap())
-        .max()
-        .unwrap();
+    let max = reader.samples::<i16>().map(|s| s.unwrap()).max().unwrap();
     // 2.5 clamped to 1.0 → i16::MAX (32767). Allow 1-LSB rounding error.
     assert!(max >= i16::MAX - 1, "expected ~i16::MAX, got {max}");
     cleanup(&path);
@@ -125,11 +121,7 @@ fn clipping_clamps_negative_overdrive() {
     render_to_wav(Const(-3.0), 0.01, SR, &path).unwrap();
 
     let mut reader = hound::WavReader::open(&path).unwrap();
-    let min = reader
-        .samples::<i16>()
-        .map(|s| s.unwrap())
-        .min()
-        .unwrap();
+    let min = reader.samples::<i16>().map(|s| s.unwrap()).min().unwrap();
     assert!(min <= -i16::MAX + 1, "expected ~-i16::MAX, got {min}");
     cleanup(&path);
 }
@@ -231,7 +223,11 @@ fn f32_roundtrip_bit_exact() {
     let mut reader = hound::WavReader::open(&path).unwrap();
     let read: Vec<f32> = reader.samples::<f32>().map(|s| s.unwrap()).collect();
     for (i, &v) in values.iter().enumerate() {
-        assert!((read[i] - v).abs() < 1e-6, "mismatch at {i}: {v} vs {}", read[i]);
+        assert!(
+            (read[i] - v).abs() < 1e-6,
+            "mismatch at {i}: {v} vs {}",
+            read[i]
+        );
     }
     cleanup(&path);
 }

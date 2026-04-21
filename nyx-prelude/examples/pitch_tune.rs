@@ -55,7 +55,11 @@ fn main() {
         loop {
             let elapsed = start.elapsed().as_secs_f32();
             let cycle = (elapsed % 20.0) / 20.0;
-            let tri = if cycle < 0.5 { cycle * 2.0 } else { 2.0 - cycle * 2.0 };
+            let tri = if cycle < 0.5 {
+                cycle * 2.0
+            } else {
+                2.0 - cycle * 2.0
+            };
             let true_f = 110.0 * 2.0_f32.powf(tri * 3.0);
             let (detected, clarity) = pitch.read();
             let _ = writeln!(

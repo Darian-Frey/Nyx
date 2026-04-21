@@ -20,7 +20,7 @@
 
 use crate::clock::ClockState;
 use crate::pattern::Pattern;
-use crate::random::{seeded, Rng};
+use crate::random::{Rng, seeded};
 
 /// Default PRNG seed when `.seed(...)` is not called.
 const DEFAULT_SEED: u64 = 0xBA55_A557;
@@ -113,7 +113,10 @@ impl<T: Clone> Sequence<T> {
     pub fn every<F: FnOnce(Pattern<T>) -> Pattern<T>>(mut self, n: u32, f: F) -> Self {
         if n > 0 {
             let alt_pattern = f(self.pattern.clone());
-            self.alt = Some(AltConfig::Every { n, pattern: alt_pattern });
+            self.alt = Some(AltConfig::Every {
+                n,
+                pattern: alt_pattern,
+            });
         }
         self
     }
@@ -125,11 +128,7 @@ impl<T: Clone> Sequence<T> {
     /// // 30% of cycles, rotate the pattern by 2.
     /// seq.sometimes(0.3, |p| p.rotate(2))
     /// ```
-    pub fn sometimes<F: FnOnce(Pattern<T>) -> Pattern<T>>(
-        mut self,
-        p: f32,
-        f: F,
-    ) -> Self {
+    pub fn sometimes<F: FnOnce(Pattern<T>) -> Pattern<T>>(mut self, p: f32, f: F) -> Self {
         let alt_pattern = f(self.pattern.clone());
         self.alt = Some(AltConfig::Sometimes {
             p: p.clamp(0.0, 1.0),
@@ -208,7 +207,9 @@ impl<T: Clone> Sequence<T> {
     }
 
     fn active_pattern(&self) -> &Pattern<T> {
-        if self.using_alt && let Some(alt) = &self.alt {
+        if self.using_alt
+            && let Some(alt) = &self.alt
+        {
             return match alt {
                 AltConfig::Every { pattern, .. } => pattern,
                 AltConfig::Sometimes { pattern, .. } => pattern,

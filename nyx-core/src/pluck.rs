@@ -86,8 +86,7 @@ pub fn pluck(freq: f32, decay: f32) -> Pluck {
 impl Pluck {
     /// Fill the active region of the buffer with white noise.
     fn strike(&mut self, sample_rate: f32) {
-        let n = ((sample_rate / self.freq).round() as usize)
-            .clamp(2, self.buffer.len());
+        let n = ((sample_rate / self.freq).round() as usize).clamp(2, self.buffer.len());
         self.active_len = n;
         self.read_idx = 0;
         let mut state = self.seed;
@@ -109,8 +108,7 @@ impl Signal for Pluck {
         }
 
         let out = self.buffer[self.read_idx];
-        let prev_idx =
-            (self.read_idx + self.active_len - 1) % self.active_len;
+        let prev_idx = (self.read_idx + self.active_len - 1) % self.active_len;
         let prev = self.buffer[prev_idx];
 
         // One-pole lowpass (simple average) × decay in the feedback path.

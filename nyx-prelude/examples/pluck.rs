@@ -10,9 +10,9 @@ use nyx_prelude::*;
 
 fn main() {
     let chord = pluck(Note::C4.to_freq(), 0.996)
-        .add(pluck(Note::from_midi(63).to_freq(), 0.996))  // Eb (minor)
+        .add(pluck(Note::from_midi(63).to_freq(), 0.996)) // Eb (minor)
         .add(pluck(Note::G4.to_freq(), 0.996))
-        .add(pluck(Note::from_midi(70).to_freq(), 0.996))  // Bb (7th)
+        .add(pluck(Note::from_midi(70).to_freq(), 0.996)) // Bb (7th)
         .amp(0.25);
 
     play(chord).unwrap();
