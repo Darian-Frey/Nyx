@@ -57,12 +57,8 @@ fn main() {
     // Am – F – C – G: MIDI roots A2, F2, C2, G2.
     let chord_roots: [u8; 4] = [33, 29, 24, 31];
     // (root, 3rd, 5th, octave) intervals — Am is minor, F/C/G are major.
-    let chord_intervals: [[u8; 4]; 4] = [
-        [0, 3, 7, 12],
-        [0, 4, 7, 12],
-        [0, 4, 7, 12],
-        [0, 4, 7, 12],
-    ];
+    let chord_intervals: [[u8; 4]; 4] =
+        [[0, 3, 7, 12], [0, 4, 7, 12], [0, 4, 7, 12], [0, 4, 7, 12]];
 
     let pad_params: [OscParam; 4] = [
         OscParam::new(220.0),

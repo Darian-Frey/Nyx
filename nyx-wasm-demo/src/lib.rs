@@ -77,12 +77,27 @@ impl NyxDemo {
             .damping(0.4)
             .wet(0.35);
 
-        // Tap the signal for visualisation before handing it to the engine.
-        // Both taps are pass-throughs — they don't change the audio.
-        let (pad, scope_handle) = pad.scope(SCOPE_BUFFER);
-        let (pad, spectrum_handle) = pad.spectrum(SpectrumConfig::default());
+        Self::start(pad)
+    }
 
-        let engine = Engine::play(pad).map_err(|e| JsError::new(&format!("{e:?}")))?;
+    /// Start the 90-second Tron: Legacy-style electro-orchestral cue.
+    ///
+    /// See [`nyx_prelude::demos::tron`] for the full musical breakdown.
+    /// After ~90 s the track enters its decay section and fades to
+    /// silence; call `.free()` and then this again to restart it.
+    pub fn tron() -> Result<NyxDemo, JsError> {
+        console_error_panic_hook::set_once();
+        Self::start(demos::tron())
+    }
+
+    /// Internal: install scope + spectrum taps and hand the signal to the
+    /// audio engine. Shared by every demo constructor so the
+    /// visualisation pipeline stays identical across patches.
+    fn start<S: Signal + 'static>(signal: S) -> Result<NyxDemo, JsError> {
+        let (signal, scope_handle) = signal.scope(SCOPE_BUFFER);
+        let (signal, spectrum_handle) = signal.spectrum(SpectrumConfig::default());
+
+        let engine = Engine::play(signal).map_err(|e| JsError::new(&format!("{e:?}")))?;
         Ok(NyxDemo {
             _engine: engine,
             scope: scope_handle,

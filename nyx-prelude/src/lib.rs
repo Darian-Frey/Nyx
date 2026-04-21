@@ -56,6 +56,9 @@ pub use nyx_seq::envelope;
 pub use nyx_seq::inst;
 pub use nyx_seq::seeded;
 
+// ─── Reusable demo signal builders ───────────────────────────────────
+pub mod demos;
+
 /// Start playing a signal on the default audio output device.
 ///
 /// Blocks the current thread until the user presses Enter.

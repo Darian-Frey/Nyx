@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Nyx-Audio — WASM demo</title>
+    <title>Nyx-Audio — WASM demos</title>
     <style>
         :root {
             --bg: #0e0e12;
@@ -80,15 +80,21 @@
         }
         button:hover { border-color: var(--accent); color: var(--accent); }
         button.playing { border-color: var(--accent-alt); color: var(--accent-alt); }
+        .controls {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
         #status { margin-top: 1.5rem; font-size: 0.85rem; color: var(--muted); }
     </style>
 </head>
 <body>
     <h1>nyx — audio synthesis in Rust, compiled for the browser</h1>
     <p>
-        An A-minor pad rendered by Nyx's DSP engine inside a WebAudio
-        graph. The oscilloscope and spectrum views below read from the
-        same signal chain via lock-free ring buffers.
+        Patches rendered by Nyx's DSP engine inside a WebAudio graph.
+        The oscilloscope and spectrum views below read from the same
+        signal chain via lock-free ring buffers.
     </p>
 
     <div class="panels">
@@ -102,13 +108,16 @@
         </div>
     </div>
 
-    <button id="toggle">play</button>
+    <div class="controls">
+        <button id="play-pad" data-demo="pad">A-minor pad</button>
+        <button id="play-tron" data-demo="tron">Tron cue (90 s)</button>
+    </div>
     <div id="status">loading WASM…</div>
 
     <script type="module">
         import init, { NyxDemo } from "./pkg/nyx_wasm_demo.js";
 
-        const btn = document.getElementById("toggle");
+        const buttons = Array.from(document.querySelectorAll("button[data-demo]"));
         const status = document.getElementById("status");
         const scopeCanvas = document.getElementById("scope");
         const specCanvas = document.getElementById("spectrum");
@@ -215,26 +224,51 @@
         status.textContent = "ready";
         rafId = requestAnimationFrame(draw);
 
-        btn.addEventListener("click", () => {
-            try {
-                if (demo) {
-                    demo.free();
-                    demo = null;
-                    specBuf = null;
-                    btn.textContent = "play";
-                    btn.classList.remove("playing");
-                    status.textContent = "stopped";
-                } else {
-                    demo = new NyxDemo();
-                    btn.textContent = "stop";
-                    btn.classList.add("playing");
-                    status.textContent = "playing";
-                }
-            } catch (e) {
-                status.textContent = `error: ${e}`;
-                console.error(e);
+        // Track which demo (if any) is currently playing so clicking the
+        // active button stops it, clicking a different button crossfades
+        // by stopping the old one and starting the new one.
+        let currentDemo = null;
+
+        function stopCurrent() {
+            if (demo) {
+                demo.free();
+                demo = null;
+                specBuf = null;
             }
-        });
+            for (const b of buttons) {
+                b.classList.remove("playing");
+                const label = b.dataset.demo === "pad" ? "A-minor pad" : "Tron cue (90 s)";
+                b.textContent = label;
+            }
+            currentDemo = null;
+        }
+
+        function startDemo(kind, button) {
+            const newDemo = kind === "tron" ? NyxDemo.tron() : new NyxDemo();
+            demo = newDemo;
+            currentDemo = kind;
+            button.classList.add("playing");
+            button.textContent = "stop";
+            status.textContent = kind === "tron" ? "playing tron cue" : "playing pad";
+        }
+
+        for (const button of buttons) {
+            button.addEventListener("click", () => {
+                try {
+                    const kind = button.dataset.demo;
+                    if (currentDemo === kind) {
+                        stopCurrent();
+                        status.textContent = "stopped";
+                    } else {
+                        stopCurrent();
+                        startDemo(kind, button);
+                    }
+                } catch (e) {
+                    status.textContent = `error: ${e}`;
+                    console.error(e);
+                }
+            });
+        }
     </script>
 </body>
 </html>
