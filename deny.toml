@@ -20,7 +20,16 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # Fail the build on any unmaintained crate advisory too, not just
 # critical vulns. Adjust to "warn" if noise becomes a problem.
 yanked = "deny"
-ignore = []
+# Unmaintained advisories on transitive deps we do not directly control
+# (nannou, iced, bevy, spectrum-analyzer, notify). No safe upgrade available
+# upstream. Revisit when upstream crates publish maintained releases.
+ignore = [
+    "RUSTSEC-2025-0056", # adler (via image/tiff/miniz_oxide → nannou)
+    "RUSTSEC-2024-0384", # instant (via iced/wasm-timer, notify, winit/nannou)
+    "RUSTSEC-2024-0436", # paste (via spectrum-analyzer, bevy_winit, wgpu-hal)
+    "RUSTSEC-2021-0140", # rusttype (via nannou)
+    "RUSTSEC-2020-0020", # stb_truetype (via rusttype → nannou)
+]
 
 # ─── License policy ───────────────────────────────────────────────────
 #
