@@ -22,21 +22,28 @@ osc = ["dep:rosc"]
 wav = ["dep:hound"]
 
 [dependencies]
-cpal = { version = "0.17", optional = true }
 rtrb = "0.3"
 spectrum-analyzer = "1.6"
 rosc = { version = "0.10", optional = true }
 hound = { version = "3", optional = true }
 thiserror = "1"
 
-# Native MIDI backend.
+# Native cpal — picks the OS host (ALSA / CoreAudio / WASAPI) automatically.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cpal = { version = "0.17", optional = true }
 midir = { version = "0.10", optional = true }
 
-# WebMIDI backend — bypasses `midir`'s broken wasm path (see
-# docs/phase-b-wasm.md) and talks to `navigator.requestMIDIAccess()`
-# directly via wasm-bindgen / web-sys.
+# WASM cpal — the WebAudio backend is gated behind cpal's `wasm-bindgen`
+# feature; without it `cpal::default_host()` silently returns a null
+# host and `default_output_device()` gives `None`. The feature pulls in
+# wasm-bindgen + the web-sys AudioContext / AudioScheduledSourceNode
+# types cpal needs to drive a ScriptProcessorNode (our Option A path —
+# see docs/phase-b-wasm.md).
+#
+# WebMIDI backend — bypasses `midir`'s broken wasm path and talks to
+# `navigator.requestMIDIAccess()` directly.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+cpal = { version = "0.17", optional = true, features = ["wasm-bindgen"] }
 wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 js-sys = { version = "0.3", optional = true }
