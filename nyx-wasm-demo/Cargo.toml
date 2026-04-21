@@ -1,0 +1,21 @@
+[package]
+name = "nyx-wasm-demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# cdylib is the crate type that `wasm-pack` expects — it produces a .wasm
+# file plus the wasm-bindgen-generated JS shim.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+# The demo uses the normal Nyx fluent API. `audio` pulls in cpal, whose
+# WASM backend routes through WebAudio; `wav` brings in Sample::from_buffer
+# helpers that don't touch the filesystem.
+nyx-prelude = { path = "../nyx-prelude", default-features = false, features = ["audio"] }
+
+# Minimal browser glue.
+wasm-bindgen = "0.2"
+console_error_panic_hook = "0.1"

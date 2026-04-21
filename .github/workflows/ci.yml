@@ -87,3 +87,31 @@ jobs:
           command: check
           # Scan licenses, advisories, banned crates, and sources.
           command-arguments: "--all-features"
+
+  wasm-build:
+    name: wasm32 build
+    runs-on: ubuntu-latest
+    # Headless DSP engine must compile for wasm32-unknown-unknown so
+    # the Phase B (browser) work doesn't regress. See
+    # docs/phase-b-wasm.md for the scope decisions and what's gated
+    # out of the WASM build.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: build nyx-core (default features off)
+        run: cargo build -p nyx-core --target wasm32-unknown-unknown --no-default-features
+      - name: build nyx-seq
+        run: cargo build -p nyx-seq --target wasm32-unknown-unknown --no-default-features
+      - name: build nyx-prelude
+        run: cargo build -p nyx-prelude --target wasm32-unknown-unknown --no-default-features
+      - name: build nyx-core + wav feature
+        run: cargo build -p nyx-core --target wasm32-unknown-unknown --no-default-features --features wav
+      - name: build nyx-core + osc feature
+        run: cargo build -p nyx-core --target wasm32-unknown-unknown --no-default-features --features osc
+      - name: build nyx-core + midi feature (WebMIDI backend)
+        run: cargo build -p nyx-core --target wasm32-unknown-unknown --no-default-features --features midi
+      - name: build nyx-wasm-demo (end-to-end browser demo)
+        run: cargo build -p nyx-wasm-demo --target wasm32-unknown-unknown

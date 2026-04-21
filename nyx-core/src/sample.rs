@@ -23,6 +23,7 @@
 //! (A "sample graveyard" that ships `Arc`s back to the main thread for
 //! drop is planned for Sprint 2.)
 
+#[cfg(feature = "wav")]
 use std::path::Path;
 use std::sync::Arc;
 

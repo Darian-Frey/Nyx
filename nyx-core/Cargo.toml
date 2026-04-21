@@ -7,7 +7,17 @@ license.workspace = true
 [features]
 default = ["audio", "wav"]
 audio = ["dep:cpal"]
-midi = ["dep:midir"]
+# On native the `midi` feature pulls in `midir`; on wasm32 it pulls in the
+# web-sys + wasm-bindgen bindings for the WebMIDI API. Cargo quietly skips
+# dep-activations for crates that don't exist in the current `[target]`
+# block, so the single `midi` feature Just Works on both platforms.
+midi = [
+    "dep:midir",
+    "dep:wasm-bindgen",
+    "dep:wasm-bindgen-futures",
+    "dep:web-sys",
+    "dep:js-sys",
+]
 osc = ["dep:rosc"]
 wav = ["dep:hound"]
 
@@ -15,10 +25,31 @@ wav = ["dep:hound"]
 cpal = { version = "0.17", optional = true }
 rtrb = "0.3"
 spectrum-analyzer = "1.6"
-midir = { version = "0.10", optional = true }
 rosc = { version = "0.10", optional = true }
 hound = { version = "3", optional = true }
 thiserror = "1"
+
+# Native MIDI backend.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+midir = { version = "0.10", optional = true }
+
+# WebMIDI backend — bypasses `midir`'s broken wasm path (see
+# docs/phase-b-wasm.md) and talks to `navigator.requestMIDIAccess()`
+# directly via wasm-bindgen / web-sys.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2", optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
+js-sys = { version = "0.3", optional = true }
+web-sys = { version = "0.3", optional = true, features = [
+    "Window",
+    "Navigator",
+    "MidiAccess",
+    "MidiInput",
+    "MidiInputMap",
+    "MidiMessageEvent",
+    "MidiOptions",
+    "console",
+] }
 
 [dev-dependencies]
 hound = "3"

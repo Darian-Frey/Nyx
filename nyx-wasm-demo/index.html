@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nyx-Audio — WASM demo</title>
+    <style>
+        body {
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            background: #0e0e12;
+            color: #d8d8e0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            font-size: 1.4rem;
+            font-weight: 500;
+            color: #e8a26b;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            max-width: 32rem;
+            text-align: center;
+            color: #8c8ca0;
+            line-height: 1.5;
+            margin: 0 0 2rem;
+        }
+        button {
+            background: #1a1a22;
+            color: #d8d8e0;
+            border: 1px solid #3a3a46;
+            padding: 0.75rem 2rem;
+            font-family: inherit;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 0.25rem;
+            transition: all 0.15s;
+        }
+        button:hover { border-color: #e8a26b; color: #e8a26b; }
+        button.playing { border-color: #6bd4e8; color: #6bd4e8; }
+        #status { margin-top: 1.5rem; font-size: 0.85rem; color: #6a6a7a; }
+    </style>
+</head>
+<body>
+    <h1>nyx — audio synthesis in Rust, compiled for the browser</h1>
+    <p>
+        An A-minor pad rendered by Nyx's DSP engine inside a WebAudio
+        graph. Click to toggle.
+    </p>
+    <button id="toggle">play</button>
+    <div id="status">loading WASM…</div>
+
+    <script type="module">
+        import init, { NyxDemo } from "./pkg/nyx_wasm_demo.js";
+
+        const btn = document.getElementById("toggle");
+        const status = document.getElementById("status");
+
+        await init();
+        status.textContent = "ready";
+
+        let demo = null;
+
+        btn.addEventListener("click", () => {
+            try {
+                if (demo) {
+                    demo.free();
+                    demo = null;
+                    btn.textContent = "play";
+                    btn.classList.remove("playing");
+                    status.textContent = "stopped";
+                } else {
+                    demo = new NyxDemo();
+                    btn.textContent = "stop";
+                    btn.classList.add("playing");
+                    status.textContent = "playing";
+                }
+            } catch (e) {
+                status.textContent = `error: ${e}`;
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+</html>

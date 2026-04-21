@@ -181,76 +181,40 @@ impl Signal for CcSignal {
     }
 }
 
-// ─── MIDI Input (requires midir) ────────────────────────────────────
+// ─── MIDI Input backends ────────────────────────────────────────────
+//
+// Native (ALSA/CoreMIDI/WinMM) goes through `midir`. The browser uses a
+// hand-rolled WebMIDI backend in `midi_web` — this side-steps an upstream
+// type-inference bug in `midir-0.10.3`'s WebMIDI backend (see
+// docs/phase-b-wasm.md). Both backends expose the same
+// `open_midi_input` / `open_midi_input_named` / `MidiConnection`
+// surface so user code compiles against either target unchanged.
 
-/// Open the first available MIDI input port and start forwarding events.
-///
-/// Returns a `MidiReceiver` for the audio thread and a `MidiConnection`
-/// that must be kept alive (MIDI stops when it is dropped).
+#[cfg(all(feature = "midi", not(target_arch = "wasm32")))]
+#[path = "midi_native.rs"]
+mod midi_native;
+#[cfg(all(feature = "midi", not(target_arch = "wasm32")))]
+pub use midi_native::{MidiConnection, open_midi_input, open_midi_input_named};
+
+#[cfg(all(feature = "midi", target_arch = "wasm32"))]
+#[path = "midi_web.rs"]
+mod midi_web;
+#[cfg(all(feature = "midi", target_arch = "wasm32"))]
+pub use midi_web::{MidiConnection, open_midi_input, open_midi_input_named};
+
+/// Errors from MIDI input. Shared between native and web backends.
 #[cfg(feature = "midi")]
-pub fn open_midi_input() -> Result<(MidiReceiver, MidiConnection), MidiError> {
-    open_midi_input_named(None)
-}
-
-/// Open a MIDI input port by name substring (or first available if `None`).
-#[cfg(feature = "midi")]
-pub fn open_midi_input_named(
-    name_filter: Option<&str>,
-) -> Result<(MidiReceiver, MidiConnection), MidiError> {
-    let midi_in =
-        midir::MidiInput::new("nyx-midi-in").map_err(|e| MidiError::Init(e.to_string()))?;
-
-    let ports = midi_in.ports();
-    if ports.is_empty() {
-        return Err(MidiError::NoPort);
-    }
-
-    let port = if let Some(filter) = name_filter {
-        ports
-            .iter()
-            .find(|p| midi_in.port_name(p).unwrap_or_default().contains(filter))
-            .ok_or(MidiError::NoPort)?
-    } else {
-        &ports[0]
-    };
-
-    let (mut sender, receiver) = midi_bridge(256);
-
-    let connection = midi_in
-        .connect(
-            port,
-            "nyx-midi",
-            move |_timestamp, data, _| {
-                if let Some(event) = parse_midi(data) {
-                    sender.send(event);
-                }
-            },
-            (),
-        )
-        .map_err(|e| MidiError::Connect(e.to_string()))?;
-
-    Ok((
-        receiver,
-        MidiConnection {
-            _connection: connection,
-        },
-    ))
-}
-
-/// A live MIDI connection. MIDI input stops when this is dropped.
-#[cfg(feature = "midi")]
-pub struct MidiConnection {
-    _connection: midir::MidiInputConnection<()>,
-}
-
-/// Errors from MIDI input.
 #[derive(Debug)]
 pub enum MidiError {
+    /// Backend failed to initialise (host error, insecure context, etc.).
     Init(String),
+    /// No MIDI input port matched the requested filter.
     NoPort,
+    /// Opening the selected port failed.
     Connect(String),
 }
 
+#[cfg(feature = "midi")]
 impl std::fmt::Display for MidiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -261,4 +225,5 @@ impl std::fmt::Display for MidiError {
     }
 }
 
+#[cfg(feature = "midi")]
 impl std::error::Error for MidiError {}

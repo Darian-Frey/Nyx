@@ -6,11 +6,13 @@ members = [
     "nyx-cli",
     "nyx-prelude",
     "nyx-examples",
+    "nyx-wasm-demo",
 ]
-# Keep heavy visualisers (nannou, bevy) out of the default build so
-# `cargo build`, `cargo test`, and `cargo clippy` stay fast. To build
-# an example from nyx-examples, target it explicitly:
+# Keep heavy visualisers (nannou, bevy) and the wasm32-only demo out of
+# the default build so `cargo build`, `cargo test`, and `cargo clippy`
+# stay fast. To target them explicitly:
 #     cargo run -p nyx-examples --example nannou_scope --release
+#     cd nyx-wasm-demo && wasm-pack build --target web
 default-members = [
     "nyx-core",
     "nyx-seq",
