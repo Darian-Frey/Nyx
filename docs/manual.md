@@ -516,6 +516,129 @@ let wet = osc::saw(220.0)
 `.next()` call, the active ring lengths are scaled to match the actual
 stream sample rate.
 
+### Chorus & Flanger
+
+Two modulated-delay effects, both producing genuine stereo via LFOs
+offset by 180° on left and right channels.
+
+```rust
+// Chorus: thickens a mono source (15–30 ms base delay, 1–10 ms depth)
+osc::saw(220.0).chorus(0.5, 3.0)
+
+// Flanger: short delay + feedback, the classic jet whoosh
+osc::saw(110.0).flanger(0.3, 2.0).feedback(0.7)
+```
+
+| Effect | Base delay | Feedback | Typical rate | Character |
+| --- | --- | --- | --- | --- |
+| `.chorus(rate_hz, depth_ms)` | 20 ms | none | 0.1–3 Hz | Ensemble, widening, detune |
+| `.flanger(rate_hz, depth_ms)` | 2.5 ms | 0 (configurable) | 0.1–1 Hz | Swooping comb filter, jet plane |
+
+Both return types expose builder methods:
+
+| Method | Applies to | Default |
+| --- | --- | --- |
+| `.mix(wet)` | both | `0.5` |
+| `.base_delay(ms)` | both | `20.0` chorus, `2.5` flanger |
+| `.feedback(amount)` | flanger only | `0.0` (clamped to `[0, 0.95]`) |
+
+### Compressor & Sidechain
+
+A feed-forward compressor with peak detection and an asymmetric attack/
+release envelope follower. Two entry points on `SignalExt`:
+
+```rust
+// Self-compression — the signal drives its own gain reduction.
+drums.compress(-12.0, 4.0)
+    .attack_ms(5.0)
+    .release_ms(100.0)
+    .makeup_db(3.0);
+
+// Sidechain — an external trigger drives the reduction on `self`.
+// The trigger is consumed for detection only; it is never audible.
+bass.sidechain(kick, -20.0, 8.0)
+    .attack_ms(1.0)
+    .release_ms(150.0);
+```
+
+| Method | Applies to | Default | Notes |
+| --- | --- | --- | --- |
+| `.compress(threshold_db, ratio)` | `SignalExt` | — | `ratio >= 1.0`, `f32::INFINITY` = limiter |
+| `.sidechain(trigger, threshold_db, ratio)` | `SignalExt` | — | `trigger: impl Signal`; detected on, not heard |
+| `.threshold_db(db)` | both | construction | Re-set threshold after construction |
+| `.ratio(r)` | both | construction | `r` is clamped to ≥ 1.0 internally |
+| `.attack_ms(ms)` | both | `5.0` | Envelope rise time |
+| `.release_ms(ms)` | both | `100.0` | Envelope fall time |
+| `.makeup_db(db)` | both | `0.0` | Post-compression gain |
+
+**Stereo handling.** Both compressors detect on `max(|L|, |R|)` and apply
+one gain reduction to both channels. This preserves the stereo image
+instead of collapsing panned content.
+
+**Sidechain = trance pumping bass.** Ducking a bassline with a kick drum
+on every beat is the archetypal use case. See
+[`sidechain_pump.rs`](../nyx-prelude/examples/sidechain_pump.rs) for a
+minimal 128 BPM demo.
+
+### Bus / Mixer
+
+`Bus` is a collection of signals summed into a single output, with a
+post-sum gain. Because `Bus` itself implements `Signal`, bus processing
+like compression, EQ, or reverb is just the usual fluent chain applied
+to the bus as a whole:
+
+```rust
+let drums = Bus::new()
+    .add(kick)
+    .add(snare.amp(0.7))
+    .add(hat.amp(0.4))
+    .gain(0.85)
+    .compress(-10.0, 4.0);   // bus compression
+
+let mix = Bus::new()
+    .add(drums)
+    .add(bass)
+    .add(pad.freeverb().wet(0.4))
+    .soft_clip(1.1);          // master bus limiter
+
+play(mix).unwrap();
+```
+
+| Method | Purpose |
+| --- | --- |
+| `Bus::new()` | Empty bus |
+| `Bus::with_capacity(n)` | Empty bus with pre-reserved `Vec` capacity |
+| `.add(source)` | Append a source (heap-allocs a `Box<dyn Signal>` — pre-stream only) |
+| `.gain(g)` | Post-sum gain (default `1.0`) |
+| `.len()` / `.is_empty()` | Introspection |
+
+**Real-time safety.** `.add()` allocates (one `Box` per source) but must
+be called before `play()`. Once the stream is running, the bus callback
+never allocates — the underlying `Vec<Box<dyn Signal>>` is iterated
+in place.
+
+**Stereo.** `Bus::next_stereo` sums each source's stereo output, so
+panned / stereo-native sources (e.g. a `.haas()` widener, a
+`.freeverb()` room) retain their image through the mix.
+
+**Nested buses.** Buses compose — a bus can contain other buses — so
+a "drum bus → master bus" topology is natural.
+
+**Send / return pattern.** Nyx does not provide a true multi-reader
+send bus. Express sends by building a separate instance of the source
+scaled by the send amount, then routing it into a dedicated effect bus:
+
+```rust
+// 30% of the lead goes to a reverb return; 100% stays dry.
+let lead_dry = make_lead();
+let lead_send = make_lead().amp(0.3).freeverb().wet(1.0);
+let mix = Bus::new().add(lead_dry).add(lead_send);
+```
+
+The sources stay in sync when triggered from the same clock, MIDI event,
+or `OscParam`. See [`multi_bus.rs`](../nyx-prelude/examples/multi_bus.rs)
+for a full drum-bus / harmony-bus / master-bus topology.
+
 ### Delay / Echo
 
 Single-buffer delay line with feedback and wet/dry mix. Foundation for
@@ -1065,6 +1188,52 @@ let signal = osc::sine(440.0).inspect(|sample, ctx| {
 });
 ```
 
+### Pitch Detection (YIN)
+
+Tap a signal for fundamental-frequency estimation using the YIN
+algorithm (de Cheveigné & Kawahara, 2002):
+
+```rust
+use nyx_prelude::*;
+
+let (signal, pitch) = mic().pitch(PitchConfig::default());
+let _engine = play_async(signal).unwrap();
+
+loop {
+    let (f, clarity) = pitch.read();
+    println!("{f:>7.1} Hz  (clarity {clarity:.2})");
+    std::thread::sleep(std::time::Duration::from_millis(100));
+}
+```
+
+| Field | Default | Notes |
+| --- | --- | --- |
+| `frame_size` | `2048` | Analysis window. Larger = better low-frequency resolution, more CPU, more latency. |
+| `hop_size` | `1024` | Samples between analyses. 50% overlap is typical. |
+| `threshold` | `0.15` | CMNDF dip threshold. Lower = stricter. Range `0.10`–`0.20`. |
+| `min_freq` | `40.0` | Hz. Caps `max_τ`. |
+| `max_freq` | `4000.0` | Hz. Caps `min_τ`. |
+
+**Handle API.**
+
+| Method | Returns |
+| --- | --- |
+| `handle.freq()` | Latest fundamental in Hz (`0.0` if no pitch found) |
+| `handle.confidence()` | Clarity score `0.0`–`1.0` (higher = cleaner periodic signal) |
+| `handle.read()` | `(freq, confidence)` tuple |
+| `handle.clone()` | Cheap Arc-clone — read from any thread |
+
+**Real-time cost.** Inner loop is `O(frame_size × max_τ)`. With the
+default config at 44.1 kHz, that's ~2.2 M multiply-adds per hop
+(≈ every 23 ms). Analysis runs on the audio thread — match
+[`spectrum`](#spectrum)'s convention — with pre-allocated work buffers
+so the callback does not allocate. `.pitch()` is a passive tap; the
+underlying samples pass through unchanged.
+
+See [`pitch_tune.rs`](../nyx-prelude/examples/pitch_tune.rs) for a
+self-contained demo sweeping an oscillator while the tracker prints
+the detected frequency in real time.
+
 ---
 
 ## MIDI Input
@@ -1310,6 +1479,10 @@ how little code it takes to get a real musical result.
 | [`stereo_sweep.rs`](../nyx-prelude/examples/stereo_sweep.rs) | Panning saw bass (LFO-swept L↔R) plus Haas-widened pluck chord — demonstrates the stereo engine | `cargo run -p nyx-prelude --example stereo_sweep --release` |
 | [`reverb.rs`](../nyx-prelude/examples/reverb.rs) | 5-voice Cm7 pad with slow LFO swell through a big Freeverb room | `cargo run -p nyx-prelude --example reverb --release` |
 | [`trance.rs`](../nyx-prelude/examples/trance.rs) | 90-second trance track at 138 BPM — full production: kick/snare/hats, 16th bass, arp, supersaw lead, reverb pad, riser — across 6 sections (intro/build/drop/breakdown/final build/final drop) | `cargo run -p nyx-prelude --example trance --release` |
+| [`chorus_flanger.rs`](../nyx-prelude/examples/chorus_flanger.rs) | Chorused A-minor triad pad over a heavy-flanged bass — both effects output real stereo | `cargo run -p nyx-prelude --example chorus_flanger --release` |
+| [`sidechain_pump.rs`](../nyx-prelude/examples/sidechain_pump.rs) | 128 BPM four-on-the-floor kick ducks a sub-bass via sidechain compression — the classic trance pumping groove | `cargo run -p nyx-prelude --example sidechain_pump --release` |
+| [`multi_bus.rs`](../nyx-prelude/examples/multi_bus.rs) | Drum bus + harmony bus + bass → master bus, showing grouped compression, shared reverb, and soft-clip on the master | `cargo run -p nyx-prelude --example multi_bus --release` |
+| [`pitch_tune.rs`](../nyx-prelude/examples/pitch_tune.rs) | YIN pitch tracker printing detected frequency + clarity while a sine sweeps across three octaves | `cargo run -p nyx-prelude --example pitch_tune --release` |
 
 **Why release mode?** Debug builds of cpal + DSP are ~20× slower than
 release. Always use `--release` for anything that produces audio.

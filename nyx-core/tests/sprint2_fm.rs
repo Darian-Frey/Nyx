@@ -31,7 +31,7 @@ fn zero_index_is_pure_carrier() {
 
     // Range check
     for &s in &buf {
-        assert!(s >= -1.0 && s <= 1.0, "pure sine out of range: {s}");
+        assert!((-1.0..=1.0).contains(&s), "pure sine out of range: {s}");
     }
 
     // Zero crossings ≈ 2 * freq * duration = 2 * 440 * 0.1 = 88.
@@ -84,7 +84,7 @@ fn output_stays_in_range() {
     let mut sig = fm_op(440.0, osc::sine(880.0), 50.0); // extreme index
     for tick in 0..4096 {
         let v = sig.next(&ctx(tick));
-        assert!(v >= -1.0 && v <= 1.0, "sin output out of range: {v}");
+        assert!((-1.0..=1.0).contains(&v), "sin output out of range: {v}");
     }
 }
 

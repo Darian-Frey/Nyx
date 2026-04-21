@@ -12,15 +12,17 @@ fn main() {
     let mut clk = clock::clock(120.0);
 
     // Bright square-wave pluck with short envelope
-    let mut patch = SynthPatch::default();
-    patch.osc_shape = OscShape::Square;
-    patch.filter_cutoff = 3000.0;
-    patch.filter_q = 2.0;
-    patch.attack = 0.001;
-    patch.decay = 0.15;
-    patch.sustain = 0.0;
-    patch.release = 0.01;
-    patch.gain = 0.35;
+    let patch = SynthPatch {
+        osc_shape: OscShape::Square,
+        filter_cutoff: 3000.0,
+        filter_q: 2.0,
+        attack: 0.001,
+        decay: 0.15,
+        sustain: 0.0,
+        release: 0.01,
+        gain: 0.35,
+        ..Default::default()
+    };
     let mut lead = patch.build();
 
     // 3/8-beat delay at 120 BPM = 750 ms — half-time echo feel

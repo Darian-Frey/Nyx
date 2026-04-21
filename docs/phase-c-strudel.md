@@ -1,15 +1,18 @@
-# Phase C — Mini-Notation & Cycles DSL
+# Research: Mini-Notation & Cycles DSL (Out of scope for Nyx)
 
-Status: **Spec / Not Started**
-Target duration: 3–5 weeks FTE
-Scope: Strudel/TidalCycles-style pattern DSL on top of Nyx's DSP kernel
-Prerequisites: Sprint 3 (DSP layer complete)
+> **Status: not a Nyx roadmap item.** This document was originally
+> drafted as a Phase C plan for Nyx, but the project decided to keep
+> Nyx focused on its "p5.js of sound" mission — a fluent Rust DSP
+> library — and spin any Strudel-alike live-coding environment off as
+> a **separate project**. The notes below are preserved as research in
+> case that separate project is ever built; Nyx could serve as its
+> audio engine, or the separate project could use WebAudio/Strudel's
+> existing stack directly.
 
-This document is the planning spec for the "Nyx-as-a-Strudel-alternative"
-phase. It introduces a **mini-notation string parser**, a **cycle-based
-time model**, and the **pattern algebra** (polymeter, polyrhythm, scale
-binding) that Strudel/Tidal users expect — all built on top of our
-existing `Signal`, `Clock`, `Pattern`, and `Sequence` primitives.
+**Original scope (kept for reference):** Strudel/TidalCycles-style
+pattern DSL on top of Nyx's DSP kernel. Mini-notation string parser,
+cycle-based time model, pattern algebra (polymeter, polyrhythm, scale
+binding).
 
 ---
 

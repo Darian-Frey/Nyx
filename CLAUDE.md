@@ -280,20 +280,22 @@ polish work.
 
 ### Future (v2.0)
 
-- [ ] **Mini-notation & Cycles DSL** (Strudel/TidalCycles-style live-coding
-      interface on top of Nyx) — see
-      [docs/phase-c-strudel.md](docs/phase-c-strudel.md) for the
-      detailed phased plan (C0–C6). Pairs with WASM for browser use.
-- [ ] **WASM target** — see
-      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
-      detailed phased plan (B0–B6).
 - [ ] **DAW bridge** (JACK/PipeWire integration) — see
       [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
       detailed phased plan (A0–A5).
+- [ ] **WASM target** — see
+      [docs/roadmap-deferred.md](docs/roadmap-deferred.md) for the
+      detailed phased plan (B0–B6).
 - [ ] Multi-channel (surround) output support beyond stereo
 
-**Recommended attack order:** Sprint 3 (DSP completion) → Phase C (DSL) →
-Phase B (WASM) → Phase A (DAW bridge).
+**Recommended attack order:** Sprint 3 (DSP completion) → Phase B (WASM)
+→ Phase A (DAW bridge).
+
+> A Strudel/TidalCycles-style live-coding DSL was scoped in
+> [docs/phase-c-strudel.md](docs/phase-c-strudel.md) but is
+> **not part of the Nyx roadmap** — it will be pursued as a
+> separate project if/when built. Nyx remains focused on its
+> "p5.js of sound" mission as a Rust DSP library.
 
 ### Feature Expansion
 

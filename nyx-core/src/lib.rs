@@ -26,6 +26,11 @@ pub mod fm;
 pub mod wavetable;
 pub mod haas;
 pub mod reverb;
+pub mod chorus;
+pub mod flanger;
+pub mod compressor;
+pub mod bus;
+pub mod pitch;
 #[cfg(feature = "wav")]
 pub mod wav;
 
@@ -42,6 +47,11 @@ pub use fm::{fm_op, FmOp};
 pub use wavetable::{Wavetable, WavetableOsc};
 pub use haas::{Haas, HaasSide};
 pub use reverb::Freeverb;
+pub use chorus::Chorus;
+pub use flanger::Flanger;
+pub use compressor::{Compressor, Sidechain};
+pub use bus::Bus;
+pub use pitch::{pitch, PitchConfig, PitchHandle, PitchTracker};
 pub use param::Param;
 pub use voice::VoicePool;
 #[cfg(feature = "audio")]

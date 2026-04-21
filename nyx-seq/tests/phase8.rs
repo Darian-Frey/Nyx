@@ -1,17 +1,10 @@
-use nyx_core::{render_to_buffer, AudioContext, Signal};
+use nyx_core::render_to_buffer;
 use nyx_seq::inst;
 use nyx_seq::{
-    Chord, ChordType, Note, SubSynth, SynthPatch, OscShape, FilterType,
+    Chord, Note, SynthPatch, OscShape, FilterType,
 };
 
 const SR: f32 = 44100.0;
-
-fn ctx(tick: u64) -> AudioContext {
-    AudioContext {
-        sample_rate: SR,
-        tick,
-    }
-}
 
 // ===================== Instrument tests =====================
 
@@ -148,11 +141,13 @@ fn subsynth_silent_without_trigger() {
 
 #[test]
 fn subsynth_release_decays() {
-    let mut patch = SynthPatch::default();
-    patch.attack = 0.001;
-    patch.decay = 0.001;
-    patch.sustain = 0.8;
-    patch.release = 0.05;
+    let patch = SynthPatch {
+        attack: 0.001,
+        decay: 0.001,
+        sustain: 0.8,
+        release: 0.05,
+        ..Default::default()
+    };
 
     let mut synth = patch.build();
     synth.trigger();
@@ -170,8 +165,10 @@ fn subsynth_release_decays() {
 #[test]
 fn subsynth_all_osc_shapes() {
     for shape in [OscShape::Sine, OscShape::Saw, OscShape::Square, OscShape::Triangle] {
-        let mut patch = SynthPatch::default();
-        patch.osc_shape = shape;
+        let patch = SynthPatch {
+            osc_shape: shape,
+            ..Default::default()
+        };
         let mut synth = patch.build();
         synth.trigger();
         let buf = render_to_buffer(&mut synth, 0.05, SR);
@@ -182,8 +179,10 @@ fn subsynth_all_osc_shapes() {
 
 #[test]
 fn subsynth_bypass_filter() {
-    let mut patch = SynthPatch::default();
-    patch.filter_type = FilterType::Bypass;
+    let patch = SynthPatch {
+        filter_type: FilterType::Bypass,
+        ..Default::default()
+    };
     let mut synth = patch.build();
     synth.trigger();
     let buf = render_to_buffer(&mut synth, 0.05, SR);

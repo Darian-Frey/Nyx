@@ -206,14 +206,14 @@ fn sine_roundtrip_preserves_frequency() {
 
     // Count zero crossings — a 1 kHz sine over 1 second should have
     // ~2000 zero crossings (2 per cycle × 1000 cycles).
-    let mut crossings = 0;
+    let mut crossings: i32 = 0;
     for i in 1..samples.len() {
         if samples[i - 1].signum() != samples[i].signum() {
             crossings += 1;
         }
     }
     assert!(
-        (crossings as i32 - 2000).abs() < 20,
+        (crossings - 2000).abs() < 20,
         "expected ~2000 zero crossings, got {crossings}"
     );
     cleanup(&path);

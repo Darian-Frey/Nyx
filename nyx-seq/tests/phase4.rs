@@ -250,7 +250,7 @@ fn adsr_output_in_range() {
     for tick in 0..10000 {
         let val = env.next(&ctx(tick));
         assert!(
-            val >= -1e-6 && val <= 1.0 + 1e-6,
+            (-1e-6..=1.0 + 1e-6).contains(&val),
             "ADSR sample {tick} out of range: {val}"
         );
     }

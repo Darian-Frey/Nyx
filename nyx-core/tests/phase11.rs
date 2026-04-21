@@ -1,5 +1,5 @@
 use nyx_core::hotswap::HotSwap;
-use nyx_core::{AudioContext, Signal, SignalExt};
+use nyx_core::{AudioContext, Signal};
 
 const SR: f32 = 44100.0;
 

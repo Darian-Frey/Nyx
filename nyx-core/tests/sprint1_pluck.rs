@@ -115,7 +115,7 @@ fn output_stays_bounded() {
     let buf = render_to_buffer(&mut sig, 0.5, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -1.5 && s <= 1.5,
+            (-1.5..=1.5).contains(&s),
             "sample {i} out of bounds: {s}"
         );
     }

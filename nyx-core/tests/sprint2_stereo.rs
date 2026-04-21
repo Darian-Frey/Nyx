@@ -22,8 +22,8 @@ fn mono_signal_default_duplicates_channels() {
         let mono = {
             // Rebuild a fresh sig each time so we can compare mono vs stereo.
             // Actually we need to advance both in parallel — reset isn't an option.
-            let s = sig.next(&ctx(tick));
-            s
+            
+            sig.next(&ctx(tick))
         };
         // For the same tick, next_stereo should give (mono, mono). But
         // we've already advanced 'sig' via next(). Build a parallel

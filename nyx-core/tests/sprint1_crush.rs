@@ -90,7 +90,7 @@ fn bitcrush_output_stays_bounded() {
     let mut sig = Ramp::new(256).bitcrush(4);
     let buf = render_to_buffer(&mut sig, 256.0 / SR, SR);
     for &s in &buf {
-        assert!(s >= -1.0 - 1e-6 && s <= 1.0 + 1e-6, "out of range: {s}");
+        assert!((-1.0 - 1e-6..=1.0 + 1e-6).contains(&s), "out of range: {s}");
     }
 }
 
@@ -174,7 +174,7 @@ fn downsample_consumes_source_at_full_rate() {
     // most that many (and likely slightly fewer due to held samples),
     // but should be in the ballpark.
     assert!(
-        crossings >= 900 && crossings <= 2100,
+        (900..=2100).contains(&crossings),
         "expected ~1000-2000 crossings, got {crossings}"
     );
 }

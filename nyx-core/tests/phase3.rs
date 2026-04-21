@@ -32,7 +32,7 @@ fn sine_output_in_range() {
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -1.0 && s <= 1.0,
+            (-1.0..=1.0).contains(&s),
             "sine sample {i} out of range: {s}"
         );
     }
@@ -65,7 +65,7 @@ fn saw_range() {
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -1.0 && s <= 1.0,
+            (-1.0..=1.0).contains(&s),
             "saw sample {i} out of range: {s}"
         );
     }
@@ -101,7 +101,7 @@ fn triangle_range() {
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -1.0 - 1e-6 && s <= 1.0 + 1e-6,
+            (-1.0 - 1e-6..=1.0 + 1e-6).contains(&s),
             "triangle sample {i} out of range: {s}"
         );
     }
@@ -135,7 +135,7 @@ fn white_noise_range() {
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -1.0 && s <= 1.0,
+            (-1.0..=1.0).contains(&s),
             "white noise sample {i} out of range: {s}"
         );
     }
@@ -164,7 +164,7 @@ fn pink_noise_range() {
     let buf = render_to_buffer(&mut sig, 0.1, SR);
     for (i, &s) in buf.iter().enumerate() {
         assert!(
-            s >= -2.0 && s <= 2.0,
+            (-2.0..=2.0).contains(&s),
             "pink noise sample {i} out of range: {s}"
         );
     }

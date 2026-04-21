@@ -229,6 +229,88 @@ pub trait SignalExt: Signal + Sized {
     fn freeverb(self) -> crate::reverb::Freeverb<Self> {
         crate::reverb::Freeverb::new(self)
     }
+
+    /// Apply a stereo chorus — modulated short delay with 180°-offset
+    /// LFOs on left and right for natural stereo spread.
+    ///
+    /// `rate_hz` is the LFO speed (0.1–3 Hz typical); `depth_ms` is
+    /// the delay-time deviation from the base (1–10 ms typical).
+    /// `.base_delay()` and `.mix()` configure defaults further.
+    ///
+    /// ```ignore
+    /// osc::saw(220.0).chorus(0.5, 3.0)
+    /// ```
+    fn chorus(self, rate_hz: f32, depth_ms: f32) -> crate::chorus::Chorus<Self> {
+        crate::chorus::Chorus::new(self, rate_hz, depth_ms)
+    }
+
+    /// Apply a stereo flanger — a modulated short delay with feedback.
+    /// Shorter base delay + higher feedback than chorus produces the
+    /// classic "jet plane" swooshing comb filter.
+    ///
+    /// `rate_hz` and `depth_ms` control the LFO. Use `.feedback()` to
+    /// crank the swirl (default 0.0).
+    ///
+    /// ```ignore
+    /// osc::saw(110.0).flanger(0.3, 2.0).feedback(0.7)
+    /// ```
+    fn flanger(self, rate_hz: f32, depth_ms: f32) -> crate::flanger::Flanger<Self> {
+        crate::flanger::Flanger::new(self, rate_hz, depth_ms)
+    }
+
+    /// Apply a feed-forward compressor that detects on its own output.
+    ///
+    /// `threshold_db` is typically negative (e.g. `-12.0` dB); `ratio` is
+    /// ≥ 1.0 (`4.0` is a common musical compression; `f32::INFINITY` makes
+    /// this a brick-wall limiter). Further shaping via `.attack_ms()`,
+    /// `.release_ms()`, and `.makeup_db()` builders.
+    ///
+    /// ```ignore
+    /// drums.compress(-12.0, 4.0).attack_ms(5.0).release_ms(100.0);
+    /// ```
+    fn compress(self, threshold_db: f32, ratio: f32) -> crate::compressor::Compressor<Self> {
+        crate::compressor::Compressor::new(self, threshold_db, ratio)
+    }
+
+    /// Apply a sidechain compressor — the *trigger* signal drives gain
+    /// reduction applied to `self`. The trigger is consumed but not
+    /// audible; only `self` reaches the output.
+    ///
+    /// Classic use: duck a bassline in time with a four-on-the-floor kick
+    /// to produce the pumping trance / house feel.
+    ///
+    /// ```ignore
+    /// bass.sidechain(kick, -20.0, 8.0)
+    ///     .attack_ms(1.0)
+    ///     .release_ms(150.0);
+    /// ```
+    fn sidechain<T: Signal>(
+        self,
+        trigger: T,
+        threshold_db: f32,
+        ratio: f32,
+    ) -> crate::compressor::Sidechain<Self, T> {
+        crate::compressor::Sidechain::new(self, trigger, threshold_db, ratio)
+    }
+
+    /// Tap this signal with a YIN pitch tracker.
+    ///
+    /// Returns `(wrapped_signal, handle)`. The wrapped signal is a
+    /// passive pass-through (samples are unchanged); feed it into the
+    /// audio engine. The handle publishes the detected fundamental and
+    /// clarity from any thread via lock-free atomics.
+    ///
+    /// ```ignore
+    /// let (sig, pitch) = mic().pitch(PitchConfig::default());
+    /// let _engine = play_async(sig).unwrap();
+    /// println!("{}", pitch.freq());
+    /// ```
+    fn pitch(
+        self,
+        config: crate::pitch::PitchConfig,
+    ) -> (crate::pitch::PitchTracker<Self>, crate::pitch::PitchHandle) {
+        crate::pitch::pitch(self, config)
+    }
 }
 
 // Blanket impl: every Signal gets combinator methods for free.

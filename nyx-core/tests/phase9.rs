@@ -203,7 +203,7 @@ fn osc_signal_smooths() {
 fn mic_signal_outputs_silence_when_empty() {
     // We can't open a real mic in CI, but we can test the signal type.
     // MicSignal reads from a consumer — if empty, outputs 0.
-    let (producer, consumer) = rtrb::RingBuffer::new(64);
+    let (_producer, consumer) = rtrb::RingBuffer::new(64);
     let mut sig = nyx_core::mic::MicSignal::from_consumer(consumer);
     assert!(sig.next(&ctx(0)).abs() < 1e-10);
 }
