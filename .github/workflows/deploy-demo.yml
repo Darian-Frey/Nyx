@@ -1,0 +1,114 @@
+name: Deploy WASM demo
+
+# Publishes nyx-wasm-demo to GitHub Pages on every push to main.
+# Also runs as a CI gate: the build job measures the gzipped .wasm
+# size and fails if it exceeds the 200 KB budget from
+# docs/phase-b-wasm.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Don't cancel an in-flight deploy — a later
+# commit's deploy job will simply queue up.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUST_TOOLCHAIN: "1.95.0"
+  # Bytes. 200 KB gzipped is the Phase B budget for the core engine.
+  # The demo shell adds a handful of KB — if the real wasm creeps past
+  # this, bump deliberately and document why.
+  WASM_SIZE_BUDGET_BYTES: "204800"
+
+jobs:
+  build:
+    name: build + size budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: install wasm-pack
+        # Official installer from rustwasm — drops a binary into
+        # $HOME/.cargo/bin which the toolchain action already put in PATH.
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: build release demo
+        run: |
+          cd nyx-wasm-demo
+          wasm-pack build --release --target web --no-typescript
+
+      - name: check wasm size budget
+        run: |
+          set -euo pipefail
+          WASM_PATH="$(find nyx-wasm-demo/pkg -maxdepth 1 -name '*.wasm' | head -n1)"
+          if [ -z "${WASM_PATH}" ]; then
+            echo "::error::no .wasm found in nyx-wasm-demo/pkg/"
+            exit 1
+          fi
+          RAW=$(stat -c%s "${WASM_PATH}")
+          GZ=$(gzip -c9 "${WASM_PATH}" | wc -c)
+          RAW_KB=$(( RAW / 1024 ))
+          GZ_KB=$(( GZ / 1024 ))
+          echo "wasm path : ${WASM_PATH}"
+          echo "raw size  : ${RAW_KB} KB"
+          echo "gzipped   : ${GZ_KB} KB"
+          echo "budget    : $(( WASM_SIZE_BUDGET_BYTES / 1024 )) KB"
+          # Emit a job-summary line so the number shows up on the
+          # workflow run page.
+          {
+            echo "### WASM bundle size"
+            echo ""
+            echo "| metric | value |"
+            echo "| --- | --- |"
+            echo "| raw | ${RAW_KB} KB |"
+            echo "| gzipped | ${GZ_KB} KB |"
+            echo "| budget | $(( WASM_SIZE_BUDGET_BYTES / 1024 )) KB (gzipped) |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          if [ "${GZ}" -gt "${WASM_SIZE_BUDGET_BYTES}" ]; then
+            echo "::error::gzipped wasm (${GZ_KB} KB) exceeds budget ($(( WASM_SIZE_BUDGET_BYTES / 1024 )) KB)"
+            exit 1
+          fi
+
+      - name: stage deploy directory
+        # Copy the demo's entry point and the wasm-pack output into a
+        # flat `_site/` that GitHub Pages will serve verbatim. The
+        # relative `./pkg/nyx_wasm_demo.js` import in index.html
+        # resolves against the site root.
+        run: |
+          mkdir -p _site
+          cp nyx-wasm-demo/index.html _site/
+          cp -r nyx-wasm-demo/pkg _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./_site
+
+  deploy:
+    # Only the main branch deploys; PR builds stop after the size check.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

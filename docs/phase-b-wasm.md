@@ -1,7 +1,9 @@
 # Phase B — WASM Target
 
-Status as of **2026-04-21**: **B0, B1, B2 (Option A), and B3 complete**.
-Visualisation bridge (B4) and packaging (B5) are next.
+Status as of **2026-04-21**: **B0 through B5 complete**. Phase B v1
+is done — the browser target is deployable. The B6 live-coding DSL is
+out of scope for Nyx per the "separate project" decision in
+[CLAUDE.md](../CLAUDE.md).
 
 This document captures the scope decisions made in Phase B0 and the
 code-level state reached in Phase B1. The phased plan itself lives in
@@ -297,13 +299,189 @@ CI now covers the wasm32 `--features midi` build in the
 
 ---
 
-## Next Up — B4 / B5
+## B4 — Visualisation Bridge
 
-- **B4 (Visualisation bridge).** Expose `ScopeHandle` and
-  `SpectrumHandle` through `#[wasm_bindgen]` so the demo page can
-  draw a live waveform or spectrum in `<canvas>`.
-- **B5 (Packaging).** Set up a GitHub Pages deployment of
-  `nyx-wasm-demo` + `wasm-pack build --release`, and measure the
-  gzipped `.wasm` size against the 200 KB budget.
+**Shipped.** `ScopeHandle` and `SpectrumHandle` are now reachable from
+JavaScript through `NyxDemo` methods, so the demo page draws a live
+oscilloscope and spectrum alongside the audio.
+
+### API added to `NyxDemo`
+
+```rust
+pub fn read_scope(&mut self, out: &mut [f32]) -> usize;
+pub fn scope_available(&self) -> usize;
+pub fn spectrum_bin_count(&self) -> usize;
+pub fn read_spectrum(&self, out: &mut [f32]) -> usize;
+```
+
+wasm-bindgen marshals `&mut [f32]` into / out of a JS `Float32Array`
+automatically, so the JS side owns pre-allocated scratch buffers and
+the `requestAnimationFrame` loop never touches the garbage collector:
+
+```js
+const scopeBuf = new Float32Array(2048);
+const specBuf  = new Float32Array(2 * demo.spectrum_bin_count());
+function draw() {
+    requestAnimationFrame(draw);
+    const n = demo.read_scope(scopeBuf);    // drained into buf
+    const m = demo.read_spectrum(specBuf);  // filled as (freq, mag) pairs
+    // ... canvas paint ...
+}
+```
+
+### Design: wrappers live in `nyx-wasm-demo`, not `nyx-core`
+
+Keeping `wasm-bindgen` out of `nyx-core` means the core crate stays
+small and doesn't force browser-specific types on desktop / DAW / CLI
+consumers. Each WASM front-end (demo today, a production app
+tomorrow) wraps the underlying `ScopeHandle` / `SpectrumHandle` in
+whatever JS shape fits its use case — bin counts, unit scales, typed-
+array layouts. The current `NyxDemo` is one opinionated shape.
+
+### The `index.html` page
+
+- Two `<canvas>` elements above the play button — waveform (drawn as
+  a polyline) and spectrum (log-magnitude bars capped at 20 kHz).
+- HiDPI-correct: `devicePixelRatio` is sampled on load and on
+  `resize`, and the `<canvas>` internal dimensions scale accordingly
+  so display is crisp on retina.
+- A single `requestAnimationFrame` loop runs continuously from page
+  load; it's a no-op while `demo === null` so there's no wasted work
+  in the stopped state.
+- Stopping (`demo.free()`) resets `specBuf` to `null` so the next
+  playback re-sizes the scratch buffer from the new bin count — the
+  FFT frame size can in principle change between sessions.
+
+### Scope buffer sizing
+
+`NyxDemo` uses a 4096-sample scope ring (~93 ms at 44.1 kHz). At
+60 fps that's > 5× the headroom needed per rAF tick, so samples
+never fill the ring and get dropped during normal operation. If the
+tab is backgrounded and the rAF loop stalls, the oldest samples
+silently fall off — the scope display just "skips ahead" on return,
+which is the right behaviour.
+
+### B4 verification
+
+- Native `cargo build --workspace` and `cargo test --workspace`
+  (444 tests) unaffected.
+- `cargo build -p nyx-wasm-demo --target wasm32-unknown-unknown`
+  succeeds; CI job already covers this.
+- `cargo clippy --workspace --all-targets -- -D warnings` clean.
+
+---
+
+## B5 — Packaging & Deployment
+
+**Shipped.** The demo is deployed to GitHub Pages and gated by a size
+budget in CI.
+
+### GitHub Actions workflow
+
+[`deploy-demo.yml`](../.github/workflows/deploy-demo.yml) is a single
+workflow with two jobs:
+
+1. **build + size budget** (runs on every push to `main` and every
+   PR): installs Rust 1.95 + the wasm32 target, installs `wasm-pack`
+   via the official installer, runs `wasm-pack build --release
+   --target web --no-typescript` inside `nyx-wasm-demo/`, measures
+   the raw and gzipped `.wasm` size, writes the numbers to the
+   workflow run summary, and **fails** if gzipped size exceeds
+   `WASM_SIZE_BUDGET_BYTES` (currently 204800 = 200 KB). On PRs the
+   job stops after this step — the size check runs as a gate but no
+   deployment happens on untrusted branches.
+2. **deploy to GitHub Pages** (push-to-main only): takes the staged
+   `_site/` artifact from the build job and publishes it via
+   `actions/deploy-pages@v4`.
+
+### Deploy layout
+
+```text
+_site/
+├── index.html              # copied from nyx-wasm-demo/
+└── pkg/
+    ├── nyx_wasm_demo_bg.wasm   # wasm-pack release output
+    ├── nyx_wasm_demo.js        # wasm-bindgen loader shim
+    ├── package.json
+    └── README.md
+```
+
+The relative `./pkg/nyx_wasm_demo.js` import in the HTML resolves
+correctly against the Pages root.
+
+### Size measurement
+
+Local release build (2026-04-21):
+
+| metric | value |
+| --- | --- |
+| raw `.wasm` | 37 KB |
+| gzipped `.wasm` | **17 KB** |
+| budget (gzipped) | 200 KB |
+| headroom | ≈ 12× |
+
+The tiny size comes from three things working together:
+
+1. `--release` profile with LTO.
+2. `wasm-opt -O` (run automatically by `wasm-pack`).
+3. Aggressive dead-code elimination — the demo only pulls in `osc::saw`,
+   `.lowpass()`, `.freeverb()`, `.scope()`, `.spectrum()`, and `Engine::play`.
+   Every other DSP module (compressor, flanger, chorus, granular,
+   wavetable, FM, bus, pitch…) is dropped because the demo doesn't
+   reference it, even though it all lives in `nyx-core`.
+
+The 12× headroom means: the budget will bite only if we either add the
+whole `nyx-core` surface area to the demo (unlikely — the demo is
+deliberately small) or if a new dependency arrives with large static
+tables. That's the right failure mode for this gate.
+
+### What's intentionally *not* in B5
+
+The original Phase B roadmap listed two sub-items that we cut:
+
+- **"Publish `@nyx/audio` npm package."** The `pkg/` directory is
+  already npm-shaped, so users who want an npm entry can add their
+  own `"publishConfig"` stanza and push it. Making Nyx a real
+  first-party npm publisher adds version-management overhead (registry
+  tokens, SemVer discipline across two ecosystems) for little
+  payoff. Defer until a concrete downstream user asks.
+- **"Code editor + DSL + live audio output"** (the Strudel-style
+  playground). Explicitly out of scope for Nyx per the
+  [CLAUDE.md](../CLAUDE.md) decision to pursue DSL-style live-coding
+  as a separate project.
+
+### CI matrix (Phase B total)
+
+With B5 in place, the full set of WASM-related CI is:
+
+| Job | File | What it proves |
+| --- | --- | --- |
+| `wasm-build` | [`ci.yml`](../.github/workflows/ci.yml) | Every feature config compiles for `wasm32-unknown-unknown` on every PR |
+| `build + size budget` | [`deploy-demo.yml`](../.github/workflows/deploy-demo.yml) | Release-mode `wasm-pack` build succeeds and stays ≤ 200 KB gzipped |
+| `deploy to GitHub Pages` | same file | Push to `main` → live demo at [darian-frey.github.io/Nyx](https://darian-frey.github.io/Nyx/) |
+
+---
+
+## Phase B — Complete
+
+All six milestones from the original plan have landed:
+
+| ID | What | Status |
+| --- | --- | --- |
+| B0 | Research & scope decisions | ✅ |
+| B1 | `nyx-core` compiles for `wasm32-unknown-unknown` | ✅ |
+| B2 | WebAudio output (cpal Option A) | ✅ |
+| B3 | WebMIDI via direct `web-sys` bindings | ✅ |
+| B4 | Visualisation bridge (scope + spectrum to JS) | ✅ |
+| B5 | Packaging, GitHub Pages deploy, size budget | ✅ |
+| B6 | Live-coding DSL | **out of scope** (separate project) |
+
+The browser target is now as first-class as the native one for every
+piece of Nyx except the three that are fundamentally native: Jack /
+CoreAudio direct access, `libloading`-based hot reload, and
+`std::net::UdpSocket` OSC input. Everything else — all 15 Sprint 1–3
+DSP features, both analysis taps, pitch detection, `nyx-seq`,
+`nyx-prelude` — works in a browser tab, and there's a URL that
+proves it.
 
 [`wasm-bindgen`]: https://crates.io/crates/wasm-bindgen

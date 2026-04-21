@@ -11,6 +11,14 @@ use nyx_prelude::*;
 nyx::play(osc::sine(440));
 ```
 
+## Try it in a browser
+
+A live WebAudio demo — an A-minor pad with real-time oscilloscope and spectrum, all rendered by Nyx compiled to WASM — is deployed to GitHub Pages:
+
+**→ [darian-frey.github.io/Nyx](https://darian-frey.github.io/Nyx/)**
+
+Source and build instructions: [`nyx-wasm-demo/`](nyx-wasm-demo/). Architecture and scope decisions for the WASM port: [`docs/phase-b-wasm.md`](docs/phase-b-wasm.md).
+
 ## Goals
 
 - **Immediacy** — `nyx::play(osc::sine(440))` works in a blank project

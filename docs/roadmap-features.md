@@ -375,3 +375,51 @@ competitive with fundsp feature-wise while staying far more accessible.
 
 Before starting any item, run through the **Sprint-Wide Checklist**
 above.
+
+---
+
+## Audio Analysis Scopes (Nice to Have)
+
+Nyx currently ships **two** analysis taps — `.scope()` (oscilloscope)
+and `.spectrum()` (FFT), plus the adjacent `.pitch()` (YIN). The rest
+of the classical audio-engineering scope family is absent. They all
+fit the same "passive tap + lock-free handle" architecture as the
+existing two, so they drop in cleanly as an incremental sprint.
+
+Not prioritised — pick up when a concrete use case (a specific Iced
+widget, a mastering tool, a room-measurement workflow) motivates one.
+
+| Category | Tool | Status | Rough effort |
+| --- | --- | --- | --- |
+| Amplitude / Level | Peak Meter | ❌ | ½ day (rolling max, one-pole decay) |
+| Amplitude / Level | RMS Meter | ❌ | ½ day (running sum of squares, sliding window) |
+| Amplitude / Level | VU Meter | ❌ | trivial on top of RMS — add the 300 ms ballistic lag |
+| Amplitude / Level | LUFS (ITU-R BS.1770) | ❌ | 1–2 days — K-weighting biquads + 400 ms integration + gating |
+| Time-Domain | Oscilloscope | ✅ shipped | [`scope.rs`](../nyx-core/src/scope.rs) |
+| Frequency-Domain | Spectrum Analyzer (FFT) | ✅ shipped | [`spectrum.rs`](../nyx-core/src/spectrum.rs) |
+| Frequency-Domain | Spectrogram | ❌ | 1 day — 2-D ring buffer of FFT frames with a frame counter |
+| Stereo / Phase | Goniometer (Vectorscope) | ❌ | ½ day — X-Y tap on `(L, R)` via `next_stereo` |
+| Stereo / Phase | Correlation Meter | ❌ | ½ day — running cross-correlation, `[-1, +1]` output |
+| Specialised | 3D Waterfall Plot | ❌ | same primitive as Spectrogram with a different rendering contract |
+| Specialised | Real-Time Analyzer (RTA) | ❌ | 1 day — Spectrum + pink-noise stimulus + calibration |
+
+**Recommended bundling** (if/when picked up):
+
+1. **Meters pack** — PeakMeter + RmsMeter + CorrelationMeter in one PR
+   (~1 day total). All three are trivial and share the "atomic f32
+   writeback from the audio thread" pattern.
+2. **Goniometer** — pairs naturally with CorrelationMeter since both
+   operate on `(L, R)`. Adds maybe a half day on top of the meters pack.
+3. **VU Meter** — once RMS is in, VU is 30 LOC of ballistic lag.
+4. **Spectrogram** — 1 day, extends Spectrum with a time-axis ring.
+   Blocks Waterfall, which is the same data with a different read
+   interface.
+5. **LUFS** — 1–2 days standalone. Only worth shipping if mastering
+   becomes a first-class Nyx use case (not currently in the mission
+   statement — "p5.js of sound", not "Pro Tools in Rust").
+6. **RTA** — last, and only if room-measurement lands on the roadmap.
+
+**Architecture note.** All of these go in `nyx-core/src/*.rs` as new
+modules next to `scope.rs` / `spectrum.rs`, follow the same `SignalExt`
+method → `(Tap<S>, Handle)` pattern, and stay pass-through so they
+compose freely with existing processing chains.

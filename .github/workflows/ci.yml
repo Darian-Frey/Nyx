@@ -12,6 +12,10 @@ env:
   # so CI runs without a real audio device. Tests that need device
   # access are gated behind `#[ignore]` in the source.
   RUST_BACKTRACE: 1
+  # Pin the toolchain so clippy/rustfmt lint sets don't drift
+  # silently as new Rust versions ship. Bump this intentionally — the
+  # whole workflow uses it.
+  RUST_TOOLCHAIN: "1.95.0"
 
 jobs:
   fmt:
@@ -19,8 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: rustfmt
       - run: cargo fmt --all -- --check
 
@@ -29,8 +34,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           components: clippy
       - name: install system audio deps
         run: |
@@ -49,7 +55,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
       - name: install system audio deps (linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -69,7 +77,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
       - uses: Swatinem/rust-cache@v2
         with:
           cache-targets: "false"
@@ -84,9 +94,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
+          # `cargo-deny check` with no extra flags scans licenses,
+          # advisories, banned crates, and sources. All-features resolution
+          # is set via `[graph] all-features = true` in deny.toml.
           command: check
-          # Scan licenses, advisories, banned crates, and sources.
-          command-arguments: "--all-features"
 
   wasm-build:
     name: wasm32 build
@@ -97,8 +108,9 @@ jobs:
     # out of the WASM build.
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: build nyx-core (default features off)

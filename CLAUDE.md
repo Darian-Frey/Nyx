@@ -313,6 +313,13 @@ unit effort — see **[docs/roadmap-features.md](docs/roadmap-features.md)**.
 **Tier 3** adds chorus/flanger, bus routing, compressor, granular,
 pitch detection.
 
+**Nice-to-have audio analysis scopes** — peak / RMS / VU / LUFS
+meters, goniometer + correlation, spectrogram, waterfall, RTA. Full
+list and bundling recommendation in the "Audio Analysis Scopes (Nice
+to Have)" section of
+[docs/roadmap-features.md](docs/roadmap-features.md). Not prioritised
+— pick up when a concrete use case motivates one.
+
 ---
 
 ## Real-Time Safety Rules (Enforced — Not Advisory)

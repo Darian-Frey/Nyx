@@ -3,7 +3,7 @@
 //! Provides the `open_midi_input*` / `MidiConnection` surface on
 //! non-wasm targets. The wasm backend lives in `midi_web.rs`.
 
-use crate::midi::{midi_bridge, parse_midi, MidiError, MidiReceiver};
+use crate::midi::{MidiError, MidiReceiver, midi_bridge, parse_midi};
 
 /// A live native MIDI connection. MIDI input stops when this is dropped.
 pub struct MidiConnection {

@@ -179,10 +179,8 @@ fn main() {
             // HI-HATS — offbeats (odd 16ths) with open hat at step 7.
             if step % 2 == 1 {
                 match sec {
-                    Section::Intro => {
-                        if step == 7 || step == 15 {
-                            hat_c.trigger();
-                        }
+                    Section::Intro if step == 7 || step == 15 => {
+                        hat_c.trigger();
                     }
                     Section::Build | Section::FinalBuild => {
                         hat_c.trigger();

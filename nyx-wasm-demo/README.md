@@ -40,12 +40,18 @@ basic-http-server .
 
 Then open <http://localhost:8080/index.html> and click **play**.
 
-## What you hear
+## What you hear (and see)
 
 An A-minor triad (A3 + C4 + E4) rendered from three detuned saw
 oscillators, low-passed at 1.4 kHz, fed through Nyx's Freeverb. All of
 it generated sample-by-sample inside the browser's audio thread via
 Nyx's `Signal` trait.
+
+The page also shows a live **oscilloscope** and **spectrum** above the
+play button. Both pull from lock-free ring buffers in the DSP engine
+via `NyxDemo::read_scope()` / `NyxDemo::read_spectrum()`, using
+pre-allocated `Float32Array`s so the `requestAnimationFrame` loop
+never hits the JS garbage collector.
 
 ## Notes
 
