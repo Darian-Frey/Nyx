@@ -31,6 +31,7 @@ pub mod flanger;
 pub mod compressor;
 pub mod bus;
 pub mod pitch;
+pub mod granular;
 #[cfg(feature = "wav")]
 pub mod wav;
 
@@ -52,6 +53,7 @@ pub use flanger::Flanger;
 pub use compressor::{Compressor, Sidechain};
 pub use bus::Bus;
 pub use pitch::{pitch, PitchConfig, PitchHandle, PitchTracker};
+pub use granular::Granular;
 pub use param::Param;
 pub use voice::VoicePool;
 #[cfg(feature = "audio")]

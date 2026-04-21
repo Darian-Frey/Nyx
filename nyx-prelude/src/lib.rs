@@ -22,6 +22,7 @@ pub use nyx_core::{
     Compressor, Sidechain,
     Bus,
     PitchConfig, PitchHandle, PitchTracker,
+    Granular,
     Gain, PeakLimiter,
     Scope, ScopeExt, ScopeHandle,
     Inspect, InspectExt,

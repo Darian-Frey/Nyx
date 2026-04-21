@@ -723,6 +723,56 @@ long as any `Sampler` cloned from it is playing. Otherwise the last
 (A "sample graveyard" that ships `Arc`s back to the main thread for
 drop is planned for Sprint 2.)
 
+### Granular Synthesis
+
+`Granular` reads a `Sample` through many short, Hann-windowed "grains"
+whose position, pitch, pan, and amplitude each jitter independently.
+A fixed voice pool (default 64) is pre-allocated once; the scheduler
+spawns new grains at the configured density and the callback never
+allocates.
+
+```rust
+use nyx_prelude::*;
+
+let pad = Sample::load("pad.wav")?;
+let cloud = Granular::new(pad)
+    .grain_size(0.08)        // 80 ms grains
+    .density(40.0)           // 40 grains / sec (≈ 3.2 concurrent)
+    .position(0.4)           // read around 40 % into the source
+    .position_jitter(0.15)   // ±15 % of the sample length
+    .pitch_jitter(0.025)     // ±2.5 % pitch wobble
+    .pan_spread(1.0);        // full stereo field
+play(cloud).unwrap();
+```
+
+| Method | Default | Notes |
+| --- | --- | --- |
+| `Granular::new(sample)` | — | 64-voice pool |
+| `Granular::with_voices(sample, n)` | — | Explicit pool size; caps concurrent overlap |
+| `.grain_size(secs)` | `0.05` | 5 ms–200 ms typical |
+| `.density(hz)` | `30.0` | Grains / sec. `0.0` = silence |
+| `.position(frac)` | `0.5` | `0.0..=1.0` of sample length |
+| `.position_jitter(frac)` | `0.05` | Fraction of sample length — bipolar spread |
+| `.pitch(rate)` | `1.0` | `2.0` = octave up, `0.5` = octave down |
+| `.pitch_jitter(frac)` | `0.0` | `0.02` = ±2 % (gentle chorus); `0.5` = dramatic |
+| `.pan_spread(amount)` | `0.5` | `0.0` = mono, `1.0` = hard-left to hard-right |
+| `.amp(gain)` / `.amp_jitter(amount)` | `0.8` / `0.0` | Per-grain level |
+| `.seed(u32)` | internal | Reproducible grain patterns |
+
+**Stereo & mono.** `next_stereo` renders the real stereo field; `next`
+sums L+R (energy-preserving with linear pan). `Granular` composes with
+the rest of the fluent API — `granular.freeverb().compress(...)` is the
+natural way to add a tail and tame peaks.
+
+**Voice stealing.** When density × grain_size exceeds the voice count,
+new grains are *dropped* rather than cutting off active ones (so grains
+never click out mid-envelope). Raise the pool with
+`Granular::with_voices` if you need more overlap, or lower the density.
+
+See [`granular_cloud.rs`](../nyx-prelude/examples/granular_cloud.rs) for
+a full drone example that synthesises a Cm7 pad, granulates it, then
+reverb-glues the result.
+
 ### Karplus-Strong (Plucked String)
 
 The canonical DSP teaching example — a noise burst circulating through
@@ -1483,6 +1533,7 @@ how little code it takes to get a real musical result.
 | [`sidechain_pump.rs`](../nyx-prelude/examples/sidechain_pump.rs) | 128 BPM four-on-the-floor kick ducks a sub-bass via sidechain compression — the classic trance pumping groove | `cargo run -p nyx-prelude --example sidechain_pump --release` |
 | [`multi_bus.rs`](../nyx-prelude/examples/multi_bus.rs) | Drum bus + harmony bus + bass → master bus, showing grouped compression, shared reverb, and soft-clip on the master | `cargo run -p nyx-prelude --example multi_bus --release` |
 | [`pitch_tune.rs`](../nyx-prelude/examples/pitch_tune.rs) | YIN pitch tracker printing detected frequency + clarity while a sine sweeps across three octaves | `cargo run -p nyx-prelude --example pitch_tune --release` |
+| [`granular_cloud.rs`](../nyx-prelude/examples/granular_cloud.rs) | 3-second Cm7 pad stretched into an evolving drone via 64-voice granular synthesis + Freeverb tail | `cargo run -p nyx-prelude --example granular_cloud --release` |
 
 **Why release mode?** Debug builds of cpal + DSP are ~20× slower than
 release. Always use `--release` for anything that produces audio.

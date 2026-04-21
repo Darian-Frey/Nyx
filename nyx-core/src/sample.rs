@@ -124,6 +124,13 @@ impl Sample {
     pub fn sample_rate(&self) -> f32 {
         self.sample_rate
     }
+
+    /// Clone the underlying `Arc<[f32]>`. Used by other DSP modules
+    /// (sampler, granular) that need shared read-only access to the
+    /// audio data without copying.
+    pub(crate) fn data_arc(&self) -> Arc<[f32]> {
+        Arc::clone(&self.data)
+    }
 }
 
 /// Playback mode for a [`Sampler`].
