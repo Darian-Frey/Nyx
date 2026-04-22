@@ -7,13 +7,17 @@
 // ─── nyx-core: types ─────────────────────────────────────────────────
 pub use nyx_core::param::{ConstSignal, IntoParam};
 pub use nyx_core::{
-    Add, Amp, AudioContext, Biquad, BitCrush, Bus, Chorus, Clip, Compressor, Delay, Downsample,
-    FilterExt, FilterMode, Flanger, FmOp, Freeverb, FreqBin, Gain, Granular, Haas, HaasSide,
-    Inspect, InspectExt, Mix, Mul, Offset, Pan, Param, PeakLimiter, PitchConfig, PitchHandle,
-    PitchTracker, Pluck, Sample, SampleError, Sampler, SamplerMode, Scope, ScopeExt, ScopeHandle,
-    Sidechain, Signal, SignalExt, SoftClip, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle,
-    Svf, SvfMode, VoicePool, Wavetable, WavetableOsc, WindowFn, fm_op, pluck, render_to_buffer,
+    Add, Amp, AudioContext, Biquad, BitCrush, Bus, Chorus, Clip, Compressor, Delay, DiodeClip,
+    Downsample, Drift, FilterExt, FilterMode, Flanger, FmOp, Freeverb, FreqBin, Gain, Granular,
+    Haas, HaasSide, Inspect, InspectExt, Ladder, LadderExt, LofiExt, Mix, Mul, Offset, Pan, Param,
+    PeakLimiter, PitchConfig, PitchHandle, PitchTracker, Pluck, Sample, SampleError, Sampler,
+    SamplerMode, SaturationExt, Scope, ScopeExt, ScopeHandle, Sidechain, Signal, SignalExt,
+    SoftClip, Spectrum, SpectrumConfig, SpectrumExt, SpectrumHandle, Svf, SvfMode, Tape, TapeExt,
+    TapeSat, TubeSat, VinylCrackle, VoicePool, Wavetable, WavetableOsc, WindowFn, drift, fm_op,
+    pluck, render_to_buffer,
 };
+
+pub use nyx_core::vinyl;
 
 // ─── nyx-core: modules (for `osc::sine`, etc.) ───────────────────────
 pub use nyx_core::dynamics;
@@ -54,6 +58,7 @@ pub use nyx_seq::automation;
 pub use nyx_seq::clock;
 pub use nyx_seq::envelope;
 pub use nyx_seq::inst;
+pub use nyx_seq::presets;
 pub use nyx_seq::seeded;
 
 // ─── Reusable demo signal builders ───────────────────────────────────

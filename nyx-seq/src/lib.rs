@@ -6,6 +6,7 @@ pub mod euclid;
 pub mod inst;
 pub mod note;
 pub mod pattern;
+pub mod presets;
 pub mod random;
 pub mod scale;
 pub mod sequence;

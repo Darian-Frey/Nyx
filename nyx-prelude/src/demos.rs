@@ -10,7 +10,7 @@
 //! stay in sync: one source of truth for the musical content.
 
 use nyx_core::osc_input::{OscParam, OscParamWriter};
-use nyx_core::{AudioContext, Signal, SignalExt};
+use nyx_core::{AudioContext, Signal, SignalExt, vinyl};
 use nyx_seq::{Note, clock, envelope, inst};
 
 /// 90-second Tron: Legacy-style electro-orchestral cue.
@@ -381,6 +381,412 @@ pub fn tron() -> impl Signal + 'static {
                 strings * p + pad_out * 0.55 * p + k + s + hats + bass_out * p + lead_out * p
             }
             Section::Decay => strings + pad_out * 0.60,
+        };
+
+        (mix * 0.48).tanh()
+    }
+}
+
+/// Darker Tron-style cue — "Rinzler descends" colour.
+///
+/// 108 BPM, **F Phrygian** (F – G♭ – A♭ – B♭ – C – D♭ – E♭), 40 bars
+/// ≈ 88.9 s. Where the lighter [`tron`] uses natural minor with a
+/// harmonic-V cadence, this one leans on the Phrygian ♭2 and a bare
+/// closing cadence for menace.
+///
+/// Progression: F⁻ – G♭ – B♭⁻ – A♭ (i – ♭II – iv – ♭III) — the ♭II gives
+/// that classic "approaching" chromatic slide. At the climax the track
+/// moves to F⁻ – B♭⁻ – D♭ – C (i – iv – ♭VI – V), letting the natural
+/// 3rd inside the C major chord rub against the Phrygian context.
+///
+/// Sound design leans on the sonic-character primitives:
+///   - Strings + supersaw lead built from [`osc::saw_bl`] — no aliasing.
+///   - Lead passed through an inline Huovilainen ladder filter with a
+///     slow LFO sweeping the cutoff 800 → 2500 Hz.
+///   - A constant [`vinyl::hiss`] bed at −55 dB for the "degraded
+///     transmission" feel.
+pub fn tron_2() -> impl Signal + 'static {
+    const BPM: f32 = 108.0;
+
+    #[derive(Copy, Clone, PartialEq, Eq)]
+    enum Section {
+        Intro,
+        Mechanism,
+        Build,
+        Main,
+        Breakdown,
+        Climax,
+    }
+    fn section_for(bar: i32) -> Section {
+        match bar {
+            0..=7 => Section::Intro,
+            8..=13 => Section::Mechanism,
+            14..=15 => Section::Build,
+            16..=27 => Section::Main,
+            28..=33 => Section::Breakdown,
+            _ => Section::Climax,
+        }
+    }
+
+    let mut clk = clock::clock(BPM);
+    let mut kick = inst::kick();
+    let mut snare = inst::snare();
+    let mut hat_c = inst::hihat(false);
+    let mut hat_o = inst::hihat(true);
+
+    // F Phrygian roots. F2=29, G♭2=30, B♭1=22, A♭2=32.
+    // Climax swaps to F⁻ – B♭⁻ – D♭ – C with C2=24 giving the
+    // "Phrygian-dominant" lift.
+    let base_roots: [u8; 4] = [29, 30, 22, 32];
+    let climax_roots: [u8; 4] = [29, 22, 25, 24];
+
+    // Voicings as (root, third, fifth, octave) — third is minor or
+    // major per chord quality.
+    let base_intervals: [[u8; 4]; 4] = [
+        [0, 3, 7, 12], // F⁻
+        [0, 4, 7, 12], // G♭
+        [0, 3, 7, 12], // B♭⁻
+        [0, 4, 7, 12], // A♭
+    ];
+    let climax_intervals: [[u8; 4]; 4] = [
+        [0, 3, 7, 12], // F⁻
+        [0, 3, 7, 12], // B♭⁻
+        [0, 4, 7, 12], // D♭
+        [0, 4, 7, 12], // C (major — the natural 3rd is the bright lift)
+    ];
+
+    // String ensemble: 4 chord voices × 3 band-limited saws each.
+    let mut string_phases: [[f32; 3]; 4] = [
+        [0.00, 0.33, 0.66],
+        [0.17, 0.50, 0.83],
+        [0.08, 0.41, 0.74],
+        [0.25, 0.58, 0.91],
+    ];
+    let string_detunes: [f32; 3] = [0.9948, 1.0000, 1.0052]; // ±9 cents
+    let string_freqs: [OscParam; 4] = [
+        OscParam::new(174.61),
+        OscParam::new(207.65),
+        OscParam::new(261.63),
+        OscParam::new(349.23),
+    ];
+    let string_writers: [OscParamWriter; 4] = [
+        string_freqs[0].writer(),
+        string_freqs[1].writer(),
+        string_freqs[2].writer(),
+        string_freqs[3].writer(),
+    ];
+    let mut string_lp_state = 0.0_f32;
+    let mut string_hp_state = 0.0_f32;
+
+    // 3-voice supersaw lead (inline phases — drives the inline ladder).
+    let mut lead_phases: [f32; 3] = [0.00, 0.31, 0.63];
+    let lead_detunes: [f32; 3] = [0.9930, 1.0000, 1.0070];
+    let mut lead_freq = 440.0_f32;
+    let mut lead_env = envelope::adsr(0.015, 0.28, 0.50, 0.32);
+
+    // Inline Huovilainen 4-pole ladder state for the lead.
+    let mut ladder_s1 = 0.0_f32;
+    let mut ladder_s2 = 0.0_f32;
+    let mut ladder_s3 = 0.0_f32;
+    let mut ladder_s4 = 0.0_f32;
+    let mut ladder_last = 0.0_f32;
+    // Slow LFO for the filter cutoff — gives that menacing pulse.
+    let mut cutoff_lfo_phase = 0.0_f32;
+
+    // Base motif in F Phrygian: 5 – ♭3 – 1 per chord (8 eighth-notes/bar).
+    let base_motif: [[u8; 8]; 4] = [
+        [72, 72, 72, 72, 68, 68, 65, 65], // F⁻: C5, A♭4, F4
+        [73, 73, 73, 73, 70, 70, 66, 66], // G♭:  D♭5, B♭4, G♭4
+        [65, 65, 65, 65, 61, 61, 58, 58], // B♭⁻: F4, D♭4, B♭3
+        [75, 75, 75, 75, 72, 72, 68, 68], // A♭:  E♭5, C5, A♭4
+    ];
+    // Climax motif — higher register + the natural 3rd of C major.
+    let climax_motif: [[u8; 8]; 4] = [
+        [84, 84, 84, 84, 80, 80, 77, 77], // F⁻ (octave up)
+        [77, 77, 77, 77, 73, 73, 70, 70], // B♭⁻
+        [80, 80, 80, 80, 77, 77, 73, 73], // D♭
+        [79, 79, 79, 79, 76, 76, 72, 72], // C (5 = G, 3 = E natural, 1 = C)
+    ];
+
+    // Sub-bass: saw + sine octave-below, inline soft-clip "drive" for
+    // weight; rolls 16th-note root pattern.
+    let mut bass_phase = 0.0_f32;
+    let mut bass_sub_phase = 0.0_f32;
+    let mut bass_freq = 87.31_f32;
+    let mut bass_env = envelope::adsr(0.001, 0.10, 0.0, 0.05);
+    let bass_oct_pattern: [i32; 16] = [0, -1, 0, -1, 0, -1, 0, -1, 0, -1, 12, -1, 0, -1, 12, -1];
+
+    // Constant vinyl hiss bed.
+    let mut hiss = vinyl::hiss(-55.0);
+
+    // Riser noise for the short 2-bar Build.
+    let mut noise_state: u32 = 0xB1AC_14E7;
+
+    let mut last_16th: i32 = -1;
+    let mut last_chord_idx: i32 = -1;
+    let mut last_section: Option<Section> = None;
+
+    move |ctx: &AudioContext| {
+        let state = clk.tick(ctx);
+        let beat = state.beat;
+        let bar = (beat as i32) / 4;
+        let sixteenth = (beat * 4.0) as i32;
+        let step = sixteenth.rem_euclid(16) as usize;
+        let eighth = step / 2;
+        let sec = section_for(bar);
+        let in_climax = sec == Section::Climax;
+
+        let roots = if in_climax {
+            &climax_roots
+        } else {
+            &base_roots
+        };
+        let intervals = if in_climax {
+            &climax_intervals
+        } else {
+            &base_intervals
+        };
+        let motif = if in_climax {
+            &climax_motif
+        } else {
+            &base_motif
+        };
+
+        let chord_idx = (bar.rem_euclid(4)) as usize;
+        let chord_changed = chord_idx as i32 != last_chord_idx;
+        let section_changed = Some(sec) != last_section;
+        if chord_changed || section_changed {
+            last_chord_idx = chord_idx as i32;
+            last_section = Some(sec);
+            let root = roots[chord_idx];
+            let ivl = intervals[chord_idx];
+            // Strings sit one octave up from the bass root.
+            for i in 0..4 {
+                let n = Note::from_midi(root + 12 + ivl[i]);
+                string_writers[i].set(n.to_freq());
+            }
+            bass_freq = Note::from_midi(root).to_freq();
+        }
+
+        if sixteenth != last_16th {
+            last_16th = sixteenth;
+
+            let drums_on = matches!(sec, Section::Main | Section::Climax);
+            if drums_on && step.is_multiple_of(4) {
+                kick.trigger();
+            }
+            if drums_on && (step == 4 || step == 12) {
+                snare.trigger();
+            }
+            if sec == Section::Build {
+                // Short snare roll — 8ths tightening to 16ths in the
+                // last half-bar.
+                let fast = bar == 15 && step >= 8;
+                if fast || step.is_multiple_of(2) {
+                    snare.trigger();
+                }
+            }
+            // Hi-hats. Mechanism has sparse closed hats; Main uses
+            // 8ths with an open hat on "and of 4"; Breakdown is silent.
+            match sec {
+                Section::Mechanism => {
+                    if step == 4 || step == 12 {
+                        hat_c.trigger();
+                    }
+                }
+                Section::Main | Section::Climax => {
+                    if step == 14 {
+                        hat_o.trigger();
+                    } else if step.is_multiple_of(2) {
+                        hat_c.trigger();
+                    }
+                }
+                Section::Build => {
+                    if step.is_multiple_of(2) {
+                        hat_c.trigger();
+                    }
+                }
+                Section::Intro | Section::Breakdown => {}
+            }
+
+            let bass_on = matches!(
+                sec,
+                Section::Mechanism | Section::Build | Section::Main | Section::Climax
+            );
+            if bass_on {
+                let offset = bass_oct_pattern[step];
+                if offset >= 0 {
+                    let midi = (roots[chord_idx] as i32 + offset) as u8;
+                    bass_freq = Note::from_midi(midi).to_freq();
+                    bass_phase = 0.0;
+                    bass_sub_phase = 0.0;
+                    bass_env.trigger();
+                }
+            }
+
+            // Lead retriggers on every 8th in Main and Climax.
+            if drums_on && step.is_multiple_of(2) {
+                let midi = motif[chord_idx][eighth];
+                lead_freq = Note::from_midi(midi).to_freq();
+                lead_env.trigger();
+            }
+        }
+
+        // ─── Per-sample rendering ─────────────────────────────────────
+
+        // Vinyl hiss bed.
+        let hiss_sample = hiss.next(ctx);
+
+        // Strings (band-limited saws → LP → HP).
+        let mut string_sum = 0.0_f32;
+        for voice in 0..4 {
+            let f = string_freqs[voice].get();
+            for (i, &det) in string_detunes.iter().enumerate() {
+                // Band-limited saw via PolyBLEP.
+                let t = string_phases[voice][i];
+                let dt = (f * det / ctx.sample_rate).abs().min(0.5);
+                let naive = 2.0 * t - 1.0;
+                let blep = if t < dt {
+                    let x = t / dt;
+                    2.0 * x - x * x - 1.0
+                } else if t > 1.0 - dt {
+                    let x = (t - 1.0) / dt;
+                    x * x + 2.0 * x + 1.0
+                } else {
+                    0.0
+                };
+                string_sum += naive - blep;
+                string_phases[voice][i] += f * det / ctx.sample_rate;
+                string_phases[voice][i] -= string_phases[voice][i].floor();
+            }
+        }
+        string_sum /= 12.0;
+        let lp_a = 1.0 - (-std::f32::consts::TAU * 2800.0 / ctx.sample_rate).exp();
+        string_lp_state += lp_a * (string_sum - string_lp_state);
+        let hp_a = 1.0 - (-std::f32::consts::TAU * 200.0 / ctx.sample_rate).exp();
+        string_hp_state += hp_a * (string_lp_state - string_hp_state);
+        let strings_raw = string_lp_state - string_hp_state;
+
+        let string_amp = match sec {
+            Section::Intro => {
+                // Slow swell from silence over 8 bars.
+                let t = (bar as f32 + state.phase_in_bar) / 8.0;
+                0.30 * t.clamp(0.0, 1.0)
+            }
+            Section::Mechanism => 0.32,
+            Section::Build => 0.28,
+            Section::Main => 0.26,
+            Section::Breakdown => 0.40,
+            Section::Climax => 0.38,
+        };
+        let strings = strings_raw * string_amp;
+
+        // Drums.
+        let k = kick.next(ctx) * 1.10;
+        let s = snare.next(ctx) * 0.70;
+        let hats = hat_c.next(ctx) * 0.30 + hat_o.next(ctx) * 0.22;
+
+        // Sub-bass: band-limited saw + sine octave below, soft-clipped.
+        let bt = bass_phase;
+        let bdt = (bass_freq / ctx.sample_rate).abs().min(0.5);
+        let bass_naive = 2.0 * bt - 1.0;
+        let bass_blep = if bt < bdt {
+            let x = bt / bdt;
+            2.0 * x - x * x - 1.0
+        } else if bt > 1.0 - bdt {
+            let x = (bt - 1.0) / bdt;
+            x * x + 2.0 * x + 1.0
+        } else {
+            0.0
+        };
+        let bass_saw = bass_naive - bass_blep;
+        bass_phase += bass_freq / ctx.sample_rate;
+        bass_phase -= bass_phase.floor();
+        let bass_sub = (bass_sub_phase * std::f32::consts::TAU).sin();
+        bass_sub_phase += (bass_freq * 0.5) / ctx.sample_rate;
+        bass_sub_phase -= bass_sub_phase.floor();
+        let bass_env_val = bass_env.next(ctx);
+        let bass_out = ((bass_saw * 1.4).tanh() * 0.55 + bass_sub * 0.42) * bass_env_val * 0.62;
+
+        // 3-voice band-limited supersaw lead.
+        let mut lead_raw = 0.0_f32;
+        for (i, &det) in lead_detunes.iter().enumerate() {
+            let t = lead_phases[i];
+            let dt = (lead_freq * det / ctx.sample_rate).abs().min(0.5);
+            let naive = 2.0 * t - 1.0;
+            let blep = if t < dt {
+                let x = t / dt;
+                2.0 * x - x * x - 1.0
+            } else if t > 1.0 - dt {
+                let x = (t - 1.0) / dt;
+                x * x + 2.0 * x + 1.0
+            } else {
+                0.0
+            };
+            lead_raw += naive - blep;
+            lead_phases[i] += lead_freq * det / ctx.sample_rate;
+            lead_phases[i] -= lead_phases[i].floor();
+        }
+        lead_raw /= 3.0;
+
+        // Slow cutoff LFO — 0.18 Hz, sweeps 800 → 2500 Hz.
+        let cutoff_base = 1650.0;
+        let cutoff_depth = 850.0;
+        let lfo = (cutoff_lfo_phase * std::f32::consts::TAU).sin();
+        cutoff_lfo_phase += 0.18 / ctx.sample_rate;
+        cutoff_lfo_phase -= cutoff_lfo_phase.floor();
+        let ladder_cutoff = (cutoff_base + lfo * cutoff_depth).clamp(40.0, ctx.sample_rate * 0.45);
+        // Inline Huovilainen non-linear ladder (resonance 0.7 — squelchy
+        // without self-oscillating).
+        let g = 1.0 - (-std::f32::consts::TAU * ladder_cutoff / ctx.sample_rate).exp();
+        let k_fb = 4.0 * 0.7;
+        let u = lead_raw - k_fb * ladder_last.tanh();
+        let t_u = u.tanh();
+        let t1 = ladder_s1.tanh();
+        let t2 = ladder_s2.tanh();
+        let t3 = ladder_s3.tanh();
+        let t4 = ladder_s4.tanh();
+        ladder_s1 += g * (t_u - t1);
+        ladder_s2 += g * (t1 - t2);
+        ladder_s3 += g * (t2 - t3);
+        ladder_s4 += g * (t3 - t4);
+        ladder_last = ladder_s4;
+        let lead_filtered = ladder_s4.tanh();
+
+        let lead_amp = match sec {
+            Section::Main => 0.45,
+            Section::Climax => 0.55,
+            _ => 0.0,
+        };
+        let lead_out = lead_filtered * lead_env.next(ctx) * lead_amp;
+
+        // Short noise riser across the 2-bar Build.
+        let mut x = noise_state;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        noise_state = x;
+        let noise = (x as f32 / u32::MAX as f32) * 2.0 - 1.0;
+        let riser_amp = if sec == Section::Build {
+            let t = (bar - 14) as f32 / 2.0 + state.phase_in_bar / 2.0;
+            t.clamp(0.0, 1.0).powi(2) * 0.26
+        } else {
+            0.0
+        };
+        let riser = noise * riser_amp;
+
+        // Section mix — hiss bed is always on, kept quiet to avoid
+        // drowning the rest.
+        let base_hiss = hiss_sample * 1.0;
+        let mix = match sec {
+            Section::Intro => strings + base_hiss,
+            Section::Mechanism => strings + bass_out * 0.65 + hats + base_hiss,
+            Section::Build => strings + bass_out * 0.60 + s * 0.45 + riser + base_hiss,
+            Section::Main => strings + k + s + hats + bass_out + lead_out + base_hiss * 0.6,
+            Section::Breakdown => strings + lead_out * 0.35 + base_hiss * 1.4,
+            Section::Climax => {
+                strings + k + s + hats + bass_out * 1.05 + lead_out + base_hiss * 0.6
+            }
         };
 
         (mix * 0.48).tanh()

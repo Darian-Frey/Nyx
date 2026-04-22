@@ -320,6 +320,36 @@ to Have)" section of
 [docs/roadmap-features.md](docs/roadmap-features.md). Not prioritised
 — pick up when a concrete use case motivates one.
 
+### Sonic Character ("make existing sounds better")
+
+A separate axis from the feature roadmap: improving how Nyx's
+existing primitives actually *sound*. Tracks the shift away from
+"digital / 16-bit console" character toward band-limited oscillators
+and an analog/vintage palette — see
+**[docs/roadmap-sonic-character.md](docs/roadmap-sonic-character.md)**.
+Priority: PolyBLEP saw/square → tape/tube/diode saturation →
+Moog-style ladder filter → tape wow/flutter → analog drift →
+lofi preset wrappers. Source audit at
+`target/nyx-sonic-character-report.md`. **Status: all 8 items done.**
+
+### Final Push to v1.0 (shipping)
+
+The DSP and feature roadmaps above are about *what Nyx can do*; this
+one is about turning a code-complete library into a shipped product.
+See **[docs/roadmap-v1-shipping.md](docs/roadmap-v1-shipping.md)**.
+
+Three tiers:
+
+- **Tier 1 (blocking for v0.1)** — publish to crates.io, validate
+  native audio on Windows + macOS hands-on, get one external user.
+- **Tier 2 (polish for v1.0)** — docs.rs-quality API docs, semver
+  commitment + API surface freeze, README badges + metadata,
+  AudioWorklet backend for WASM (may ship as known limitation).
+- **Tier 3 (nice to have)** — cargo-dist binaries for `nyx-cli`,
+  tutorial content, bench suite, known-users page.
+
+The library itself is ready; what remains is release work.
+
 ---
 
 ## Real-Time Safety Rules (Enforced — Not Advisory)

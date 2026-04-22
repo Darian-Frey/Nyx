@@ -271,24 +271,58 @@ let signals: Vec<Box<dyn Signal>> = vec![
 
 All oscillators live in `nyx_core::osc`. Frequency accepts `f32` or any `Signal`.
 
-| Function | Waveform | Start value |
-|---|---|---|
-| `osc::sine(freq)` | Sine wave | 0.0 |
-| `osc::saw(freq)` | Sawtooth (ramp -1 to +1) | -1.0 |
-| `osc::square(freq)` | Square (+1 / -1) | +1.0 |
-| `osc::triangle(freq)` | Triangle (-1 to +1 to -1) | -1.0 |
+| Function | Waveform | Start value | Band-limited |
+| --- | --- | --- | --- |
+| `osc::sine(freq)` | Sine wave | 0.0 | n/a — one harmonic |
+| `osc::saw(freq)` | Naive sawtooth (aliases above ~1 kHz) | -1.0 | ❌ |
+| `osc::saw_bl(freq)` | Band-limited sawtooth (PolyBLEP) | ≈ -1.0 | ✅ |
+| `osc::square(freq)` | Naive square (aliases above ~1 kHz) | +1.0 | ❌ |
+| `osc::square_bl(freq)` | Band-limited square (PolyBLEP) | ≈ +1.0 | ✅ |
+| `osc::pwm_bl(freq, width)` | Band-limited pulse with modulatable duty cycle | depends on width | ✅ |
+| `osc::triangle(freq)` | Triangle (harmonics fall as 1/n², rarely audible aliasing) | -1.0 | n/a |
 
 All oscillators track phase as a normalised `f32` in [0, 1), incremented by
 `freq / sample_rate` each sample.
 
+#### Naive vs. band-limited
+
+`osc::saw` and `osc::square` generate the mathematical ideal waveform —
+every harmonic above Nyquist folds back as inharmonic aliasing, giving
+the characteristic "digital" / chiptune / 8-bit edge. Reach for them
+when you want that retro timbre.
+
+The `_bl` variants apply PolyBLEP (Polynomial Band-Limited stEP)
+correction at each discontinuity to suppress aliasing ~70 dB down.
+Use these for clean subtractive-synth leads, supersaws, and anything
+in the mid-to-high register where the naive aliasing bites.
+
+```rust
+// Retro acid bass — naive saw, aliases are the point
+osc::saw(110.0).lowpass(600.0, 0.7)
+
+// Clean trance lead — band-limited
+osc::saw_bl(880.0).lowpass(6000.0, 0.7)
+
+// Juno-style PWM pad — modulatable pulse width
+let lfo = osc::sine(0.3).amp(0.15).offset(0.5);
+osc::pwm_bl(220.0, lfo)
+```
+
+`pwm_bl` clamps `width` to `[0.05, 0.95]` so the up-edge and down-edge
+PolyBLEP windows never collide. At `width = 0.5` it reproduces
+`square_bl` sample-for-sample.
+
 ### Noise
 
 ```rust
-osc::noise::white(seed)   // white noise, deterministic from seed
-osc::noise::pink(seed)    // pink noise (-3 dB/octave), 12-octave Voss-McCartney
+osc::noise::white(seed)   // uniform [-1, 1], xorshift32
+osc::noise::pink(seed)    // pink noise (-3 dB/octave), Paul Kellett filter
 ```
 
-Noise generators use a portable xorshift PRNG — same sequence on all platforms.
+Both use a portable xorshift32 PRNG — same sequence on all platforms.
+Pink noise is implemented via the Paul Kellett filter (five parallel
+one-poles driven from a shared white source) for constant per-sample
+cost and a clean 1/f slope.
 
 ### Frequency Modulation
 
@@ -463,6 +497,38 @@ soft synths.
 - **SVF** — wobble basses, formant sweeps, fast filter LFOs, anything
   that needs per-sample modulation. Exposes band-pass and notch modes
   that biquad currently doesn't.
+
+### Ladder Filter (Moog-style)
+
+Huovilainen's 4-pole non-linear ladder — the canonical "analog synth
+lowpass" sound. Four cascaded one-pole stages with global feedback
+through a saturating `tanh`, plus a `tanh` on each stage's input and
+state. Self-oscillates at `resonance ≥ 1.0` (the acid-bass squeal).
+
+```rust
+use nyx_core::LadderExt;
+
+// Acid bass: squelchy saw through a resonant ladder, LFO'd cutoff.
+let lfo = osc::sine(0.3).amp(400.0).offset(800.0);
+let acid = osc::saw_bl(55.0).amp(0.6).ladder_lp(lfo, 1.05);
+```
+
+| Method | Description |
+| --- | --- |
+| `.ladder_lp(cutoff, resonance)` | Non-linear 4-pole lowpass. `cutoff` clamped to `[20, sr·0.45]`, `resonance` to `[0, 1.2]` |
+
+**DC gain drops with resonance** — the canonical Moog behaviour. DC
+gain ≈ `1 / (1 + 4·resonance)`: unity at `resonance = 0`, ⅓ at `0.5`,
+⅕ at `1.0`. Scale input or add `.amp(1.0 + 4.0 * resonance)` upstream
+to compensate.
+
+**When to use ladder vs SVF/biquad:**
+
+- **Biquad / SVF** — clean, linear filters for mastering, formant EQ,
+  general subtractive synthesis. Neither self-oscillates musically.
+- **Ladder** — acid basses, squelchy leads, analog character. The
+  non-linearity is the sound; don't reach for it when you want a
+  transparent filter.
 
 ---
 
@@ -842,6 +908,128 @@ signal.crush(6, 0.5)  // 6-bit, half rate
   sample-and-hold on the emitted value, not true decimation — the
   resulting aliasing is what gives the effect its crunch.
 
+### Saturation (Tape / Tube / Diode)
+
+Three named waveshapers, each voiced for a classic analog flavour.
+Use these instead of the generic `.soft_clip(drive)` when you want a
+specific character rather than a generic `tanh`:
+
+```rust
+use nyx_core::SaturationExt;
+
+let warm  = osc::saw_bl(220.0).amp(0.6).tape_sat(2.0);    // tape machine
+let vocal = osc::saw_bl(220.0).amp(0.6).tube_sat(3.0);    // 2nd-harmonic tube
+let fuzz  = osc::saw_bl(220.0).amp(0.6).diode_clip(8.0);  // transistor pedal
+```
+
+| Method | Signal chain |
+| --- | --- |
+| `.tape_sat(drive)` | 30 Hz HP → asymmetric `tanh` (bias = 0.1) → 12 kHz LP → `1/√drive` gain comp |
+| `.tube_sat(drive)` | `tanh(drive·x)` pre-limit → `y − k·y²` (even harmonics) → `y − y³/3` → DC-blocking HP → 15 kHz LP |
+| `.diode_clip(drive)` | Algebraic soft-clip `y = x·drive / (1 + |x·drive|)`. No filtering. |
+
+`drive` typically sits in `[1, 10]`: 1 is near-transparent, 2 is
+audible colour, 6+ is heavy. Tape's asymmetry is what gives it the
+characteristic sub-audible warmth; tube's even-harmonic emphasis
+reads as "vocal" or "musical"; diode's sharper knee gives the
+hard-edged fuzz-pedal character.
+
+### Tape Machine (wow + flutter + EQ + saturation)
+
+Run anything through a tape deck. Combines pitch modulation via a
+modulated delay line (slow wow LFO + filtered-noise flutter), tape EQ
+(30 Hz HP + 12 kHz LP), and asymmetric soft-clip. A single `.age()`
+knob scales wow depth, flutter depth, and drive together from `0.0`
+(pristine) to `1.0` (battered).
+
+```rust
+use nyx_core::TapeExt;
+
+let cassette = osc::saw_bl(220.0).amp(0.5).tape().age(0.6);
+let pristine = osc::sine(440.0).tape().age(0.1);
+let destroyed = osc::square_bl(110.0).amp(0.4).tape().age(1.0);
+
+// Override individual parameters:
+osc::saw_bl(220.0).tape().wow(0.7, 0.0012).flutter(5.0, 0.0004).drive(2.5)
+```
+
+| Builder | Effect |
+| --- | --- |
+| `.age(amount)` | Master "how battered" knob — sweeps wow/flutter/drive together |
+| `.wow(rate_hz, depth_frac)` | Sine LFO pitch wobble (default 0.5 Hz) |
+| `.flutter(rate_hz, depth_frac)` | Filtered-noise pitch flutter (default 6 Hz) |
+| `.drive(amount)` | Saturation drive (default `1.0 + 2.0 * age`) |
+
+Depth is a fraction of sample rate, so pitch wobble is SR-independent.
+
+### Analog Drift
+
+Slow random wander around **1.0**, intended to be multiplied into an
+oscillator's frequency parameter to simulate the pitch instability of
+analog VCOs.
+
+```rust
+use nyx_core::drift;
+
+// Saw around 440 Hz wobbling by ±4 cents at 0.3 Hz update rate.
+let freq = drift(4.0, 0.3).amp(440.0);
+let osc = osc::saw_bl(freq);
+
+// Deterministic for tests / hot-reload:
+let d = drift(4.0, 0.3).seed(42);
+```
+
+| Argument | Meaning |
+| --- | --- |
+| `amount_cents` | Half-range of the wander in cents (±amount) |
+| `rate_hz` | How often a new random target is picked |
+| `.seed(u32)` | Fixed PRNG seed for reproducible drift |
+
+Output is `2^(cents/1200)`, centred at 1.0. Drop `.amp(base_freq)` on
+top to convert to a modulated frequency signal.
+
+### Lo-fi Preset Wrappers
+
+One-liner aesthetic presets composing the primitives above. Each
+returns `impl Signal`, so chain as you would any other combinator:
+
+```rust
+use nyx_core::LofiExt;
+
+let drums   = osc::saw_bl(110.0).amp(0.5).cassette();     // tape + crush + hiss
+let beat    = osc::saw_bl(220.0).amp(0.5).lofi_hiphop();  // aged tape + LP + hiss
+let haunted = osc::sine(440.0).vhs();                     // heavy wow + aggressive HF loss
+```
+
+| Method | Composition |
+| --- | --- |
+| `.cassette()` | `.tape()` (age 0.5) + pink hiss at 1.5% + 10-bit crush |
+| `.lofi_hiphop()` | `.tape().age(0.7).lowpass(4000 Hz)` + 1.2% pink hiss |
+| `.vhs()` | `.tape().age(1.0).lowpass(2500 Hz)` — aggressive HF loss |
+
+Pink-hiss seeds are fixed per preset so results are reproducible.
+
+### Vinyl Crackle & Hiss
+
+Completes the "old medium" aesthetic — sparse clicks through a 2 kHz
+resonator for dusty-vinyl ambience, plus pink noise at a chosen dB
+level for a tape/vinyl noise floor.
+
+```rust
+use nyx_core::{vinyl, SignalExt};
+
+let ambience = osc::saw_bl(220.0).amp(0.4)
+    .add(vinyl::crackle(0.35))   // several clicks per second at max
+    .add(vinyl::hiss(-58.0));    // pink noise floor at −58 dBFS
+```
+
+| Function | Purpose |
+| --- | --- |
+| `vinyl::crackle(intensity)` | Random impulses through a 2 kHz ring; `intensity ∈ [0, 1]`. Output stays near zero except at click events. |
+| `vinyl::hiss(level_db)` | Pink noise scaled to the given dBFS level. Typical: −70 (subtle) to −40 (dusty). |
+
+`vinyl::crackle` also has `.seed(u32)` for reproducible patterns.
+
 ---
 
 ## Clock & Timing
@@ -1126,6 +1314,8 @@ rng.next_note_in(&scale, Note::A3, Note::A5)  // always in A minor
 
 Pre-built instruments from `nyx-core` primitives. All implement `Signal`.
 
+### Percussion & one-shots (`nyx_seq::inst`)
+
 ```rust
 use nyx_seq::inst;
 
@@ -1146,6 +1336,57 @@ let mut pad = inst::pad(Chord::major(Note::C4));
 pad.trigger();
 pad.release();
 ```
+
+### Preset Voices (`nyx_seq::presets`)
+
+Named synth recipes with opinionated defaults — "pick a voice, play
+a note" instruments. Each wraps several Nyx primitives into a
+one-call instrument that sounds recognisable without configuration.
+All expose a `set_freq(freq)` for pitch changes; most include a
+`.trigger()` / `.release()` envelope.
+
+```rust
+use nyx_prelude::*;
+
+// Acid bass — squelchy saw through a resonant ladder filter.
+let mut bass = presets::tb303(55.0);
+bass.trigger();
+
+// Trance lead — 7 detuned band-limited saws; wrap with your own envelope.
+let mut lead = presets::supersaw(440.0);
+let mut env = envelope::adsr(0.05, 0.3, 0.7, 0.4);
+env.trigger();
+let sample = lead.next(ctx) * env.next(ctx);
+
+// Tuned handpan — 4-partial modal synthesis.
+let mut pan = presets::handpan(261.63);
+pan.trigger();
+```
+
+| Preset | Technique | Trigger? | Character |
+| --- | --- | --- | --- |
+| `presets::tb303(freq)` | Saw → envelope-swept ladder (res 0.75) → amp env | Yes | Acid bass squelch |
+| `presets::moog_bass(freq)` | Saw + square → ladder at fixed cutoff | Yes | Fat analog bass (`.cutoff(hz)` to tune) |
+| `presets::supersaw(freq)` | 7 band-limited saws, ±6/±12/±18 c detune | No (continuous) | Trance lead — gate with external env |
+| `presets::prophet_pad(freq)` | 2 detuned saws + sub → soft LP → slow swell | Yes | Warm OB-Xa-style pad |
+| `presets::dx7_bell(freq)` | FM (1:1.4 ratio, index envelope) | Yes | FM mallet / bell |
+| `presets::juno_pad(freq)` | 2 PWM voices with counter-phased LFO → LP → swell | Yes | Juno-60 chorus pad |
+| `presets::handpan(freq)` | 4 damped sines at 1, 2, 3.01, 5.03 × fundamental | Yes | Tuned steel-drum "thonk" |
+| `presets::chime(freq)` | 4 damped sines at 0.5, 1.19, 2, 3 × (longer τ) | Yes | Tubular-bell ring |
+| `presets::noise_sweep(secs)` | White noise → bandpass sweep 200 Hz → 4 kHz | Yes | Build-up riser |
+
+`handpan` and `chime` use **modal synthesis** (sum of exponentially-
+damped sines at inharmonic ratios) rather than FM — the partial
+spectrum is what gives tuned metal its ring. Both use recursive
+decay (one mul per partial per sample, not one `exp()`) for
+efficiency.
+
+> **Naming note.** `dx7_bell` is FM-based; `chime` is modal. Both
+> produce bell-like sounds but via different algorithms, hence
+> different names.
+
+See `nyx-prelude/examples/presets_demo.rs` for a runnable tour of
+every preset over 20 seconds.
 
 ---
 
@@ -1753,13 +1994,14 @@ Communication between threads uses:
 ### Crate Overview
 
 | Crate | Purpose | In default workspace |
-|---|---|---|
-| `nyx-core` | Signal engine, oscillators, filters, dynamics, scope, spectrum, MIDI, OSC, mic, hotswap | Yes |
-| `nyx-seq` | Clock, envelopes, automation, notes, scales, chords, patterns, sequencer, instruments, SubSynth | Yes |
+| --- | --- | --- |
+| `nyx-core` | Signal engine, oscillators, filters, dynamics, saturation, tape, drift, vinyl, scope, spectrum, MIDI, OSC, mic, hotswap | Yes |
+| `nyx-seq` | Clock, envelopes, automation, notes, scales, chords, patterns, sequencer, instruments, presets, SubSynth | Yes |
 | `nyx-iced` | Iced GUI widgets (knob, sliders, XY pad, oscilloscope, spectrum) | Yes |
-| `nyx-prelude` | Convenience re-exports + cookbook examples | Yes |
+| `nyx-prelude` | Convenience re-exports, reusable demo tracks, cookbook examples | Yes |
 | `nyx-cli` | Hot-reload sketch player | Yes |
 | `nyx-examples` | Nannou & Bevy visualisers (heavy deps isolated here) | No — excluded from `default-members` |
+| `nyx-wasm-demo` | Browser demo — pad / Tron cue / preset keyboard via wasm-bindgen + Web Audio | No — built with `wasm-pack` |
 
 The root `Cargo.toml` lists `nyx-examples` as a workspace member but
 excludes it from `default-members`, so `cargo build`, `cargo test`, and
@@ -1778,9 +2020,13 @@ Bevy. Target `nyx-examples` explicitly (`cargo run -p nyx-examples
 ### Extension Traits
 
 | Trait | Crate | Methods Added |
-|---|---|---|
-| `SignalExt` | nyx-core | `boxed`, `amp`, `add`, `mul`, `mix`, `pan`, `clip`, `soft_clip`, `offset` |
-| `FilterExt` | nyx-core | `lowpass`, `highpass` |
+| --- | --- | --- |
+| `SignalExt` | nyx-core | `boxed`, `amp`, `add`, `mul`, `mix`, `pan`, `clip`, `soft_clip`, `offset`, `bitcrush`, `downsample`, `crush`, plus delay/chorus/flanger/freeverb/compress/sidechain wrappers |
+| `FilterExt` | nyx-core | `lowpass`, `highpass`, `svf_lp`, `svf_hp`, `svf_bp`, `svf_notch` |
+| `LadderExt` | nyx-core | `ladder_lp` (Moog-style 4-pole non-linear lowpass) |
+| `SaturationExt` | nyx-core | `tape_sat`, `tube_sat`, `diode_clip` |
+| `TapeExt` | nyx-core | `tape` (wow + flutter + EQ + saturation wrapper) |
+| `LofiExt` | nyx-core | `cassette`, `lofi_hiphop`, `vhs` (preset chains) |
 | `ScopeExt` | nyx-core | `scope` |
 | `SpectrumExt` | nyx-core | `spectrum` |
 | `InspectExt` | nyx-core | `inspect` |
@@ -1826,12 +2072,26 @@ work on either feature.
 
 - [x] License files (MIT + Apache 2.0) with `license.workspace = true`
       on all crates
-- [x] Cookbook examples (4 runnable sketches in `nyx-prelude/examples/`)
+- [x] Cookbook examples (runnable sketches in `nyx-prelude/examples/`)
 - [x] Widget interaction tests (25 tests across knob/slider/xypad)
 - [x] Nannou oscilloscope + Bevy spectrum visualisers in `nyx-examples/`
 - [x] Expanded `nyx-prelude` to re-export all nyx-seq modules for
       one-line imports in sketches
 - [x] Detailed deferred roadmap document
+- [x] **Sonic character roadmap** (all 8 items, see
+      [docs/roadmap-sonic-character.md](roadmap-sonic-character.md)):
+      PolyBLEP saw/square + PWM, tape/tube/diode saturation, Moog-style
+      ladder filter, tape emulator with wow/flutter, Paul Kellett pink
+      noise, analog drift, lofi preset wrappers, vinyl crackle + hiss
+- [x] **Preset voices** (`nyx_seq::presets`): tb303, moog_bass,
+      supersaw, prophet_pad, dx7_bell, juno_pad, handpan, chime,
+      noise_sweep — 9 named synth recipes, each a one-call instrument
+- [x] **Reusable demo tracks** (`nyx_prelude::demos`): tron() and
+      tron_2() — 90-second electro-orchestral cues shared between the
+      WAV renderer and the WASM browser demo
+- [x] **Interactive WASM demo** with preset keyboard — pick a voice
+      from the dropdown, hit a chromatic key, hear it via Web Audio.
+      Deployed to GitHub Pages via `deploy-demo.yml`.
 
 ---
 

@@ -13,9 +13,15 @@ nyx::play(osc::sine(440));
 
 ## Try it in a browser
 
-A live WebAudio demo — an A-minor pad with real-time oscilloscope and spectrum, all rendered by Nyx compiled to WASM — is deployed to GitHub Pages:
+A live demo rendered by Nyx compiled to WASM, with real-time oscilloscope and spectrum views, is deployed to GitHub Pages:
 
 **→ [darian-frey.github.io/Nyx](https://darian-frey.github.io/Nyx/)**
+
+Three tabs:
+
+- **A-minor pad** — a gentle detuned saw through a low-pass and Freeverb
+- **Tron cue (90 s)** — a full electro-orchestral cue built from [`nyx_prelude::demos::tron`](nyx-prelude/src/demos.rs)
+- **Presets** — pick a voice from 9 synth recipes (`tb303`, `supersaw`, `handpan`, `juno_pad`, and more), then play a chromatic keyboard
 
 Source and build instructions: [`nyx-wasm-demo/`](nyx-wasm-demo/). Architecture and scope decisions for the WASM port: [`docs/phase-b-wasm.md`](docs/phase-b-wasm.md).
 
@@ -29,12 +35,14 @@ Source and build instructions: [`nyx-wasm-demo/`](nyx-wasm-demo/). Architecture 
 ## Workspace
 
 | Crate | Description |
-|---|---|
+| --- | --- |
 | `nyx-core` | Headless signal engine — zero UI dependencies |
-| `nyx-seq` | Clock, sequencer, music theory |
+| `nyx-seq` | Clock, sequencer, music theory, instruments, preset voices |
 | `nyx-iced` | Optional Iced GUI widgets |
 | `nyx-cli` | Standalone sketch player / live-diff binary |
-| `nyx-prelude` | Re-exports for one-line imports |
+| `nyx-prelude` | Re-exports for one-line imports, plus reusable demo tracks |
+| `nyx-examples` | Nannou & Bevy visualisers (excluded from default workspace build) |
+| `nyx-wasm-demo` | Browser demo crate — built with `wasm-pack`, deployed to GitHub Pages |
 
 ## Quick Start
 
@@ -82,10 +90,10 @@ Full API reference and usage guide: **[docs/manual.md](docs/manual.md)**
 
 ## Status
 
-Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development roadmap.
+All 11 numbered phases are complete; active work is feature expansion and sonic polish. See [CLAUDE.md](CLAUDE.md) for the full status board.
 
 | Phase | Description | Status |
-|---|---|---|
+| --- | --- | --- |
 | 0 | Architecture spike — Signal trait, Param, VoicePool | Done |
 | 1 | Night-safe core — cpal, SPSC bridge, no-alloc guard | Done |
 | 2 | Fluent API — combinators, `nyx::play` | Done |
@@ -99,10 +107,18 @@ Nyx is in early development. See [CLAUDE.md](CLAUDE.md) for the full development
 | 10 | Iced GUI widgets | Done |
 | 11 | Live-diff / hot reload | Done |
 
+**Since Phase 11:**
+
+- **Sonic character pack** — PolyBLEP oscillators (`saw_bl`, `square_bl`, `pwm_bl`), tape / tube / diode saturation, Moog-style non-linear ladder filter, tape emulator with wow + flutter + `age` knob, analog drift, Paul Kellett pink noise, lofi preset wrappers (`.cassette()` / `.lofi_hiphop()` / `.vhs()`), vinyl crackle + hiss. See [docs/roadmap-sonic-character.md](docs/roadmap-sonic-character.md).
+- **Preset voice library** (`nyx_seq::presets`) — 9 named recipes: `tb303`, `moog_bass`, `supersaw`, `prophet_pad`, `dx7_bell`, `juno_pad`, `handpan`, `chime`, `noise_sweep`.
+- **Reusable demo tracks** (`nyx_prelude::demos`) — 90-second electro-orchestral cues shared between the offline WAV renderer and the interactive browser demo.
+- **Interactive WASM demo** — preset keyboard on the live page, deployed to GitHub Pages via `.github/workflows/deploy-demo.yml`.
+
 ## Requirements
 
 - Rust Edition 2024+
-- Targets: x86_64, aarch64 (WASM deferred to v2.0)
+- Native targets: x86_64, aarch64
+- Browser target: `wasm32-unknown-unknown` via `wasm-pack` (`nyx-wasm-demo`)
 
 ## License
 

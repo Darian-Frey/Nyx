@@ -34,6 +34,9 @@
 
 #![cfg(target_arch = "wasm32")]
 
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
+
 use nyx_prelude::*;
 use wasm_bindgen::prelude::*;
 
@@ -142,6 +145,209 @@ impl NyxDemo {
 
     /// Report whether the underlying audio stream has entered an error
     /// state (e.g. the browser suspended the `AudioContext`).
+    pub fn has_error(&self) -> bool {
+        self._engine.has_error()
+    }
+}
+
+/// Shared command block between JS (producer) and the audio thread
+/// (consumer). The `counter` field is edge-triggered — every time JS
+/// calls [`NyxPresets::play_note`] it increments it; the audio loop
+/// notices the change, reads `preset` + `freq`, and dispatches a
+/// trigger on the matching voice.
+///
+/// WASM runs single-threaded (ScriptProcessorNode on the main thread),
+/// but atomic accesses keep the code correct for any backend — the
+/// same struct will fit a cpal native build where audio runs off-main.
+struct TriggerState {
+    /// Incremented by `play_note`; watched by the audio loop.
+    counter: AtomicU64,
+    /// Preset index 0..=5. See `PRESET_NAMES`.
+    preset: AtomicU8,
+    /// Requested pitch in Hz, stored as `f32` bits.
+    freq: AtomicU32,
+}
+
+/// Symbolic preset names — order must match the dispatch in
+/// [`NyxPresets::new`]. Exposed to JS so the HTML can be generated
+/// from this list rather than hard-coded twice.
+const PRESET_NAMES: [&str; 9] = [
+    "tb303",
+    "moog_bass",
+    "supersaw",
+    "prophet_pad",
+    "dx7_bell",
+    "noise_sweep",
+    "juno_pad",
+    "handpan",
+    "chime",
+];
+
+/// Interactive "pick a preset, play a note" demo.
+///
+/// Holds every preset pre-allocated and routes JS-side `play_note`
+/// calls to the chosen one via an atomic command block. The unused
+/// presets are still being `.next()`-ed each sample for state
+/// coherence; their built-in envelopes keep them silent until
+/// triggered.
+#[wasm_bindgen]
+pub struct NyxPresets {
+    state: Arc<TriggerState>,
+    _engine: Engine,
+    scope: ScopeHandle,
+    spectrum: SpectrumHandle,
+}
+
+#[wasm_bindgen]
+impl NyxPresets {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Result<NyxPresets, JsError> {
+        console_error_panic_hook::set_once();
+
+        let state = Arc::new(TriggerState {
+            counter: AtomicU64::new(0),
+            preset: AtomicU8::new(0),
+            freq: AtomicU32::new(440.0_f32.to_bits()),
+        });
+        let state_audio = Arc::clone(&state);
+
+        let mut tb = presets::tb303(110.0);
+        let mut moog = presets::moog_bass(55.0);
+        let mut saw = presets::supersaw(440.0);
+        // Supersaw has no intrinsic envelope — wrap with an external one
+        // that JS retriggers alongside the oscillator.
+        let mut saw_env = envelope::adsr(0.03, 0.25, 0.70, 0.35);
+        let mut prophet = presets::prophet_pad(220.0);
+        let mut bell = presets::dx7_bell(523.25);
+        let mut sweep = presets::noise_sweep(1.2);
+        let mut juno = presets::juno_pad(220.0);
+        let mut pan = presets::handpan(261.63);
+        let mut chime = presets::chime(440.0);
+
+        let mut last_counter: u64 = 0;
+
+        let signal = move |ctx: &AudioContext| {
+            // Edge-triggered command dispatch.
+            let cur = state_audio.counter.load(Ordering::Relaxed);
+            if cur != last_counter {
+                last_counter = cur;
+                let preset = state_audio.preset.load(Ordering::Relaxed);
+                let freq = f32::from_bits(state_audio.freq.load(Ordering::Relaxed));
+                match preset {
+                    0 => {
+                        tb.set_freq(freq);
+                        tb.trigger();
+                    }
+                    1 => {
+                        moog.set_freq(freq);
+                        moog.trigger();
+                    }
+                    2 => {
+                        saw.set_freq(freq);
+                        saw_env.trigger();
+                    }
+                    3 => {
+                        prophet.set_freq(freq);
+                        prophet.trigger();
+                    }
+                    4 => {
+                        bell.set_freq(freq);
+                        bell.trigger();
+                    }
+                    5 => sweep.trigger(),
+                    6 => {
+                        juno.set_freq(freq);
+                        juno.trigger();
+                    }
+                    7 => {
+                        pan.set_freq(freq);
+                        pan.trigger();
+                    }
+                    _ => {
+                        chime.set_freq(freq);
+                        chime.trigger();
+                    }
+                }
+            }
+
+            // Run every voice to keep internal state coherent; their
+            // built-in envelopes keep them silent between notes.
+            let tb_s = tb.next(ctx);
+            let moog_s = moog.next(ctx);
+            let saw_s = saw.next(ctx) * saw_env.next(ctx);
+            let prophet_s = prophet.next(ctx);
+            let bell_s = bell.next(ctx);
+            let sweep_s = sweep.next(ctx);
+            let juno_s = juno.next(ctx);
+            let pan_s = pan.next(ctx);
+            let chime_s = chime.next(ctx);
+
+            let mix =
+                tb_s + moog_s + saw_s + prophet_s + bell_s + sweep_s + juno_s + pan_s + chime_s;
+            (mix * 0.40).tanh()
+        };
+
+        let (signal, scope_handle) = signal.scope(SCOPE_BUFFER);
+        let (signal, spectrum_handle) = signal.spectrum(SpectrumConfig::default());
+        let engine = Engine::play(signal).map_err(|e| JsError::new(&format!("{e:?}")))?;
+
+        Ok(NyxPresets {
+            state,
+            _engine: engine,
+            scope: scope_handle,
+            spectrum: spectrum_handle,
+        })
+    }
+
+    /// Fire a note on the given preset.
+    ///
+    /// - `preset`: index into [`PRESET_NAMES`] (0..=5).
+    /// - `freq_hz`: pitch for the note. Ignored by `noise_sweep` (index 5).
+    ///
+    /// Safe to call repeatedly from any JS event handler. The audio
+    /// loop picks up the change on its next sample.
+    pub fn play_note(&self, preset: u8, freq_hz: f32) {
+        // Clamp the preset index to the valid range so an out-of-range
+        // value from JS can't wrap to a surprising voice.
+        let p = if (preset as usize) < PRESET_NAMES.len() {
+            preset
+        } else {
+            0
+        };
+        self.state.preset.store(p, Ordering::Relaxed);
+        self.state.freq.store(freq_hz.to_bits(), Ordering::Relaxed);
+        self.state.counter.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Return the list of available preset names as a JSON-like string
+    /// (comma-separated). Use this from JS to populate the dropdown
+    /// without hard-coding the names in two places.
+    pub fn preset_names() -> String {
+        PRESET_NAMES.join(",")
+    }
+
+    pub fn read_scope(&mut self, out: &mut [f32]) -> usize {
+        self.scope.read(out)
+    }
+
+    pub fn scope_available(&self) -> usize {
+        self.scope.available()
+    }
+
+    pub fn spectrum_bin_count(&self) -> usize {
+        self.spectrum.bin_count()
+    }
+
+    pub fn read_spectrum(&self, out: &mut [f32]) -> usize {
+        let bins = self.spectrum.snapshot();
+        let n = (out.len() / 2).min(bins.len());
+        for (i, bin) in bins.iter().take(n).enumerate() {
+            out[2 * i] = bin.freq;
+            out[2 * i + 1] = bin.magnitude;
+        }
+        n
+    }
+
     pub fn has_error(&self) -> bool {
         self._engine.has_error()
     }
